@@ -110,7 +110,7 @@ export class CircleSelect extends FSM {
             }
 
             // execute selection callback only
-            (typeof this.callback === 'function') && this.callback(s);
+            (typeof this.callback === 'function') && this.callback(s, Selector.getObjects(s, view));
 
             // TODO: remove these modes in the future
             view.aladin.showReticle(true)
