@@ -555,7 +555,7 @@ export let View = (function () {
             const xymouse = Utils.relMouseCoords(e);
 
             // deselect all the selected sources with Select panel
-            view.unselectObjects()
+            //view.unselectObjects()
 
             try {
                 const [lon, lat] = view.aladin.pix2world(xymouse.x, xymouse.y, 'icrs');
@@ -599,7 +599,7 @@ export let View = (function () {
             tolerance = tolerance || 5;
             var objs = view.closestObjects(xy.x, xy.y, tolerance);
             // Deselect objects if any
-            view.unselectObjects();
+            //view.unselectObjects();
             if (objs) {
                 var objClickedFunction = view.aladin.callbacksByEventName['objectClicked'];
                 var footprintClickedFunction = view.aladin.callbacksByEventName['footprintClicked'];
@@ -632,9 +632,16 @@ export let View = (function () {
                             footprintClickedFunction(o, xy);
                         }
                     }
+                    
+                    if (view.lastClickedObject && view.lastClickedObject.includes(o)) {
+                        o.deselect();
+                    } else {
+                        o.select();
+                    }
+                    
                 }
 
-                view.selectObjects([objs]);
+                //view.selectObjects([objs]);
                 view.lastClickedObject = objs;
             } else {
                 // If there is a past clicked object
@@ -1473,7 +1480,7 @@ export let View = (function () {
 
     View.prototype.selectObjects = function(selection) {
         // unselect the previous selection
-        this.unselectObjects();
+        //this.unselectObjects();
 
         if (Array.isArray(selection)) {
             this.selection = selection;
