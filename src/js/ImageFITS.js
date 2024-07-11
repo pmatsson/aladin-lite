@@ -67,6 +67,7 @@ export let ImageFITS = (function () {
         // Set it to a default value
         this.url = url;
         this.id = url;
+        this.ext = options && options.ext;
         this.name = (options && options.name) || this.url;
 
         this.imgFormat = "fits";
@@ -87,7 +88,9 @@ export let ImageFITS = (function () {
     }
 
     ImageFITS.prototype._saveInCache = function () {
-        HiPSCache.append(this.id, this);
+        if (HiPSCache.contains(self.id)) {
+            HiPSCache.append(this.id, this);
+        }
     };
 
     // A cache storing directly the images to not query for the properties each time
@@ -206,7 +209,8 @@ export let ImageFITS = (function () {
                 imagesParams.forEach((imageParams) => {
                     // This fits has HDU extensions
                     let image = new ImageFITS(imageParams.url, {
-                        name: self.name + "_ext_" + hduIdx.toString(),
+                        name: self.name,
+                        ext: hduIdx.toString()
                     });
 
                     // Set the layer corresponding to the onein the backend

@@ -7,6 +7,7 @@ use std::marker::Unpin;
 use std::vec;
 
 use al_api::coo_system::CooSystem;
+use cgmath::Vector3;
 use cgmath::Zero;
 use futures::stream::TryStreamExt;
 use futures::AsyncRead;
@@ -28,10 +29,13 @@ use al_core::WebGlContext;
 use al_core::{Texture2D, VertexArrayObject};
 
 use crate::camera::CameraViewPort;
+use crate::math::angle::ToAngle;
 use crate::math::lonlat::LonLat;
 use crate::Colormaps;
+use crate::LonLatT;
 use crate::ProjectionType;
 use crate::ShaderManager;
+use cgmath::InnerSpace;
 
 use std::ops::Range;
 
@@ -65,6 +69,9 @@ pub struct Image {
     idx_tex: Vec<usize>,
     /// The maximum webgl supported texture size
     max_tex_size: usize,
+
+    // Is the increasing longitude on the image goes towards the east ?
+    towards_east: bool,
 }
 
 use fitsrs::hdu::header::extension;
@@ -135,7 +142,7 @@ impl Image {
             .unwrap() as f32;
 
         // Create a WCS from a specific header unit
-        let wcs = WCS::new(&header)
+        let wcs = WCS::from_fits_header(&header)
             .map_err(|e| JsValue::from_str(&format!("WCS parsing error: reason: {}", e)))?;
 
         let image_coo_sys = match wcs.coo_system() {
@@ -350,6 +357,21 @@ impl Image {
             .unproj_lonlat(&ImgXY::new(0.0, height / 2.0))
             .ok_or(JsValue::from_str("(0, h / 2) px cannot be unprojected"))?;
 
+        let a_xyz: Vector3<f64> = crate::coosys::apply_coo_system(
+            CooSystem::ICRS,
+            image_coo_sys,
+            &LonLatT::new(left_lonlat.lon().to_angle(), left_lonlat.lat().to_angle()).vector(),
+        )
+        .truncate();
+        let b_xyz = crate::coosys::apply_coo_system(
+            CooSystem::ICRS,
+            image_coo_sys,
+            &LonLatT::new(center.lon().to_angle(), center.lat().to_angle()).vector(),
+        )
+        .truncate();
+
+        let towards_east = a_xyz.cross(b_xyz).dot(Vector3::unit_y()) <= 0.0;
+
         let half_fov1 =
             crate::math::lonlat::ang_between_lonlat(top_lonlat.into(), center.clone().into());
         let half_fov2 =
@@ -357,15 +379,8 @@ impl Image {
 
         let half_fov = half_fov1.max(half_fov2);
 
-        // ra and dec must be given in ICRS coo system
-        let center = {
-            use crate::LonLatT;
-            let center: LonLatT<_> = center.into();
-            let center =
-                crate::coosys::apply_coo_system(image_coo_sys, CooSystem::ICRS, &center.vector());
-            center.lonlat()
-        };
-
+        // ra and dec must be given in ICRS coo system, which is the case because wcs returns
+        // only icrs coo
         let centered_fov = CenteredFoV {
             ra: center.lon().to_degrees(),
             dec: center.lat().to_degrees(),
@@ -391,6 +406,7 @@ impl Image {
             scale,
             offset,
             blank,
+            towards_east,
 
             // Centered field of view allowing to locate the fits
             centered_fov,
@@ -405,18 +421,6 @@ impl Image {
         };
 
         Ok(image)
-    }
-
-    pub fn update(
-        &mut self,
-        camera: &CameraViewPort,
-        projection: &ProjectionType,
-    ) -> Result<(), JsValue> {
-        if camera.has_moved() {
-            self.recompute_vertices(camera, projection)?;
-        }
-
-        Ok(())
     }
 
     pub fn recompute_vertices(
@@ -439,7 +443,7 @@ impl Image {
             for vertex in vertices.iter() {
                 let xyzw = crate::coosys::apply_coo_system(
                     camera.get_coo_system(),
-                    self.image_coo_sys,
+                    CooSystem::ICRS,
                     vertex,
                 );
 
@@ -517,7 +521,7 @@ impl Image {
         let num_vertices =
             ((self.centered_fov.fov / 360.0) * (MAX_NUM_TRI_PER_SIDE_IMAGE as f64)).ceil() as u64;
 
-        let (pos, uv, indices, num_indices) = grid::get_grid_vertices(
+        let (pos, uv, indices, num_indices) = grid::vertices(
             &(x_mesh_range.start, y_mesh_range.start),
             &(x_mesh_range.end.ceil(), y_mesh_range.end.ceil()),
             self.max_tex_size as u64,
@@ -526,9 +530,10 @@ impl Image {
             &self.wcs,
             self.image_coo_sys,
             projection,
+            self.towards_east,
         );
-        self.pos = unsafe { crate::utils::transmute_vec(pos).map_err(|s| JsValue::from_str(s))? };
-        self.uv = unsafe { crate::utils::transmute_vec(uv).map_err(|s| JsValue::from_str(s))? };
+        self.pos = pos;
+        self.uv = uv;
 
         // Update num_indices
         self.indices = indices;
@@ -557,11 +562,21 @@ impl Image {
 
     // Draw the image
     pub fn draw(
-        &self,
+        &mut self,
         shaders: &mut ShaderManager,
         colormaps: &Colormaps,
         cfg: &ImageMetadata,
+        camera: &CameraViewPort,
+        projection: &ProjectionType,
     ) -> Result<(), JsValue> {
+        if camera.has_moved() {
+            self.recompute_vertices(camera, projection)?;
+        }
+
+        if self.num_indices.is_empty() {
+            return Ok(());
+        }
+
         self.gl.enable(WebGl2RenderingContext::BLEND);
 
         let ImageMetadata {
@@ -572,25 +587,37 @@ impl Image {
         } = cfg;
 
         let shader = match self.channel {
-            ChannelType::R32F => crate::shader::get_shader(&self.gl, shaders, "FitsVS", "FitsFS")?,
-            #[cfg(feature = "webgl2")]
-            ChannelType::R32I => {
-                crate::shader::get_shader(&self.gl, shaders, "FitsVS", "FitsFSInteger")?
+            ChannelType::R32F => {
+                crate::shader::get_shader(&self.gl, shaders, "fits_base.vert", "fits_sampler.frag")?
             }
             #[cfg(feature = "webgl2")]
-            ChannelType::R16I => {
-                crate::shader::get_shader(&self.gl, shaders, "FitsVS", "FitsFSInteger")?
-            }
+            ChannelType::R32I => crate::shader::get_shader(
+                &self.gl,
+                shaders,
+                "fits_base.vert",
+                "fits_isampler.frag",
+            )?,
             #[cfg(feature = "webgl2")]
-            ChannelType::R8UI => {
-                crate::shader::get_shader(&self.gl, shaders, "FitsVS", "FitsFSUnsigned")?
-            }
+            ChannelType::R16I => crate::shader::get_shader(
+                &self.gl,
+                shaders,
+                "fits_base.vert",
+                "fits_isampler.frag",
+            )?,
+            #[cfg(feature = "webgl2")]
+            ChannelType::R8UI => crate::shader::get_shader(
+                &self.gl,
+                shaders,
+                "fits_base.vert",
+                "fits_usampler.frag",
+            )?,
             _ => return Err(JsValue::from_str("Image format type not supported")),
         };
 
         //self.gl.disable(WebGl2RenderingContext::CULL_FACE);
 
         // 2. Draw it if its opacity is not null
+
         blend_cfg.enable(&self.gl, || {
             let mut off_indices = 0;
             for (idx, &idx_tex) in self.idx_tex.iter().enumerate() {
@@ -614,7 +641,7 @@ impl Image {
                         ((off_indices as usize) * std::mem::size_of::<u16>()) as i32,
                     );
 
-                off_indices += self.num_indices[idx];
+                off_indices += num_indices;
             }
 
             Ok(())

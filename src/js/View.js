@@ -36,9 +36,6 @@ import { ProjectionEnum } from "./ProjectionEnum.js";
 import { Utils } from "./Utils";
 import { GenericPointer } from "./GenericPointer.js";
 import { Stats } from "./libs/Stats.js";
-import { Circle } from "./shapes/Circle.js";
-import { Ellipse } from "./shapes/Ellipse.js";
-import { Polyline } from "./shapes/Polyline.js";
 import { CooFrameEnum } from "./CooFrameEnum.js";
 import { requestAnimFrame } from "./libs/RequestAnimationFrame.js";
 import { WebGLCtx } from "./WebGL.js";
@@ -51,6 +48,8 @@ import { DefaultActionsForContextMenu } from "./DefaultActionsForContextMenu.js"
 import { Layout } from "./gui/Layout.js";
 import { SAMPActionButton } from "./gui/Button/SAMP.js";
 import { HiPSCache } from "./DefaultHiPSCache.js";
+import { ImageHiPS } from "./ImageHiPS.js";
+import { ImageFITS } from "./ImageFITS.js";
 
 export let View = (function () {
 
@@ -98,14 +97,12 @@ export let View = (function () {
                 try {
                     const image = self.aladin.createImageFITS(
                         url,
-                        file.name,
-                        undefined,
+                        {name: file.name},
                         (ra, dec, fov, _) => {
                             // Center the view around the new fits object
                             aladin.gotoRaDec(ra, dec);
                             aladin.setFoV(fov * 1.1);
-                        },
-                        undefined
+                        }
                     );
                     self.setOverlayImageLayer(image, file.name)
                 } catch(e) {
@@ -159,7 +156,9 @@ export let View = (function () {
         this.mustClearCatalog = true;
         this.mode = View.PAN;
 
-        this.minFOV = this.maxFOV = null; // by default, no restriction
+        // 0.1 arcsec
+        this.minFoV = 1 / 36000;
+        this.maxFoV = null;
 
         this.healpixGrid = new HealpixGrid();
         this.then = Date.now();
@@ -338,6 +337,20 @@ export let View = (function () {
         //this.gridCanvas = createCanvas('aladin-gridCanvas');
         this.imageCanvas = createCanvas('aladin-imageCanvas');
     };
+
+    View.prototype.setFoVRange = function(minFoV, maxFoV) {
+        if (minFoV && maxFoV && minFoV > maxFoV) {
+            var tmp = minFoV;
+            minFoV = maxFoV;
+            maxFoV = tmp;
+        }
+
+        this.minFoV = minFoV || (1.0 / 36000);
+        this.maxFoV = maxFoV;
+
+        // reset the field of view
+        this.setZoom(this.fov);
+    }
 
     // called at startup and when window is resized
     // The WebGL backend is resized
@@ -547,6 +560,8 @@ export let View = (function () {
             try {
                 const [lon, lat] = view.aladin.pix2world(xymouse.x, xymouse.y, 'icrs');
                 view.pointTo(lon, lat);
+                // reset the rotation around center view
+                view.setViewCenter2NorthPoleAngle(0.0);
             }
             catch (err) {
                 return;
@@ -702,7 +717,7 @@ export let View = (function () {
             }
 
             // zoom pinching
-            if (e.type === 'touchstart' && e.targetTouches && e.targetTouches.length == 2) {
+            if (e.type === 'touchstart' && e.targetTouches && e.targetTouches.length >= 2) {
                 view.dragging = false;
 
                 view.pinchZoomParameters.isPinching = true;
@@ -710,7 +725,7 @@ export let View = (function () {
                 view.pinchZoomParameters.initialFov = fov;
                 view.pinchZoomParameters.initialDistance = Math.sqrt(Math.pow(e.targetTouches[0].clientX - e.targetTouches[1].clientX, 2) + Math.pow(e.targetTouches[0].clientY - e.targetTouches[1].clientY, 2));
 
-                view.fingersRotationParameters.initialViewAngleFromCenter = view.wasm.getRotationAroundCenter();
+                view.fingersRotationParameters.initialViewAngleFromCenter = view.wasm.getViewCenter2NorthPoleAngle();
                 view.fingersRotationParameters.initialFingerAngle = Math.atan2(e.targetTouches[1].clientY - e.targetTouches[0].clientY, e.targetTouches[1].clientX - e.targetTouches[0].clientX) * 180.0 / Math.PI;
 
                 return;
@@ -862,7 +877,7 @@ export let View = (function () {
                         const elapsedTime = Date.now() - touchStartTime;
                         if (elapsedTime < 100) {
                             view.updateObjectsLookup();
-                            handleSelect(xymouse, 10);
+                            handleSelect(xymouse, 15);
                         }
                     }
                 } else {
@@ -933,6 +948,7 @@ export let View = (function () {
 
                 if(view.selectedLayer) {
                     let selectedLayer = view.imageLayers.get(view.selectedLayer);
+
                     // We try to match DS9 contrast adjustment behaviour with right click
                     const cs = {
                         x: view.catalogCanvas.clientWidth * 0.5,
@@ -954,7 +970,7 @@ export let View = (function () {
                 return;
             }
 
-            if (e.type === 'touchmove' && view.pinchZoomParameters.isPinching && e.touches && e.touches.length == 2) {
+            if (e.type === 'touchmove' && view.pinchZoomParameters.isPinching && e.touches && e.touches.length >= 2) {
                 // rotation
                 var currentFingerAngle = Math.atan2(e.targetTouches[1].clientY - e.targetTouches[0].clientY, e.targetTouches[1].clientX - e.targetTouches[0].clientX) * 180.0 / Math.PI;
                 var fingerAngleDiff = view.fingersRotationParameters.initialFingerAngle - currentFingerAngle;
@@ -974,7 +990,7 @@ export let View = (function () {
                         // planetary survey case
                         rotation -= fingerAngleDiff;
                     }
-                    view.wasm.setRotationAroundCenter(rotation);
+                    view.setViewCenter2NorthPoleAngle(rotation);
                 }
 
                 // zoom
@@ -1127,7 +1143,9 @@ export let View = (function () {
             clearTimeout(id);
             id = setTimeout(() => {
                 view.wheelTriggered = false;
+                view.zoom.stopAnimation();
             }, 100);
+
 
             const xymouse = Utils.relMouseCoords(e);
             view.xy = xymouse
@@ -1189,24 +1207,20 @@ export let View = (function () {
 
             if (isTouchPad) {
                 if (!view.throttledTouchPadZoom) {
-                    let radec;
+                    //let radec;
                     view.throttledTouchPadZoom = Utils.throttle(() => {
-                        if (!view.zoom.isZooming && !view.wheelTriggered) {
+                        /*if (!view.zoom.isZooming && !view.wheelTriggered) {
                             // start zooming detected
                             radec = view.aladin.pix2world(view.xy.x, view.xy.y);
-                        }
+                        }*/
         
-                        let amount = view.delta > 0 ? -Zoom.MAX_IDX_DELTA_PER_TROTTLE : Zoom.MAX_IDX_DELTA_PER_TROTTLE;
-                        if (amount === 0)
-                            return;
-        
-                        // change the zoom level
-                        let newFov = Zoom.determineNextFov(view, amount);
+                        const factor = 4;
+                        let newFov = view.delta > 0 ? view.fov * factor : view.fov / factor;
+
                         view.zoom.apply({
                             stop: newFov,
                             duration: 300
                         });
-                        //view.setZoom(newFov)
         
                         /*if (amount > 0 && radec) {
                             let sRaDec = view.aladin.getRaDec();
@@ -1224,7 +1238,7 @@ export let View = (function () {
                             }
                             //requestAnimFrame(moveTo)
                         }*/
-                    }, 40);
+                    }, 100);
                 }
 
                 view.throttledTouchPadZoom();
@@ -1234,14 +1248,12 @@ export let View = (function () {
                         const factor = 5
                         let newFov = view.delta > 0 ? view.fov * factor : view.fov / factor;
                         // standard mouse wheel zooming
-                             
-                        newFov = Math.max(Math.min(newFov, Zoom.MAX), Zoom.MIN)
     
                         view.zoom.apply({
                             stop: newFov,
                             duration: 300
                         });
-                    }, 30);
+                    }, 50);
                 }
                 
                 view.throttledMouseScrollZoom()
@@ -1553,20 +1565,20 @@ export let View = (function () {
 
     View.prototype.increaseZoom = function () {
         this.zoom.apply({
-            stop: Zoom.determineNextFov(this, 6),
+            stop: this.fov / 3,
             duration: 300
         });
     }
 
     View.prototype.decreaseZoom = function () {
         this.zoom.apply({
-            stop: Zoom.determineNextFov(this, -6),
+            stop: this.fov * 3,
             duration: 300
         });
     }
 
-    View.prototype.setRotation = function(rotation) {
-        this.wasm.setRotationAroundCenter(rotation);
+    View.prototype.setViewCenter2NorthPoleAngle = function(rotation) {
+        this.wasm.setViewCenter2NorthPoleAngle(rotation);
     }
 
     View.prototype.setGridOptions = function (options) {
@@ -1599,7 +1611,7 @@ export let View = (function () {
         fovX = Math.min(fovX, 360);
         fovY = Math.min(fovY, 180);
 
-        ALEvent.ZOOM_CHANGED.dispatchedTo(this.aladinDiv, { fovX: fovX, fovY: fovY });
+        ALEvent.ZOOM_CHANGED.dispatchedTo(this.aladinDiv, { fovX, fovY });
 
         this.throttledZoomChanged();
     };
@@ -1652,6 +1664,7 @@ export let View = (function () {
         }
 
         imageLayer.added = true;
+
         this.imageLayers.set(layerName, imageLayer);
 
         // select the layer if he is on top
@@ -1690,9 +1703,12 @@ export let View = (function () {
                 this.empty = false;
 
                 if (imageLayer.children) {
-                    imageLayer.children.forEach((imageLayer) => {
-                        this._addLayer(imageLayer);
+                    imageLayer.children.forEach((imageExtLayer) => {
+                        this._addLayer(imageExtLayer);
                     })
+
+                    // remove the original fits from the cache as we add separately its extensions instead
+                    //HiPSCache.delete(imageLayer.id)
                 } else {
                     this._addLayer(imageLayer);
                 }
@@ -1728,8 +1744,11 @@ export let View = (function () {
 
                 if (noMoreLayersToWaitFor) {
                     if (self.empty) {
-                        // no promises to launch!
-                        //self.aladin.setBaseImageLayer(self.aladin.createImageSurvey(ImageHiPS.DEFAULT_SURVEY_ID));
+                        // no promises to launch and the view has no HiPS.
+                        // This situation can occurs if the MOCServer is out
+                        // If so we can directly put the url of the DSS hosted in alasky,
+                        // it the best I can do if the MOCServer is out
+                        self.aladin.setBaseImageLayer("https://alaskybis.cds.unistra.fr/DSS/DSSColor/");
                     } else {
                         // there is surveys that have been queried
                         // rename the first overlay layer to "base"
@@ -1757,6 +1776,10 @@ export let View = (function () {
         // Change in imageLayers
         this.imageLayers.delete(layer);
         this.imageLayers.set(newLayer, imageLayer);
+
+        if (this.selectedLayer === layer) {
+            this.selectedLayer = newLayer;
+        }
 
         // Tell the layer hierarchy has changed
         ALEvent.HIPS_LAYER_RENAMED.dispatchedTo(this.aladinDiv, { layer, newLayer });
@@ -1822,6 +1845,42 @@ export let View = (function () {
             this.aladin.setBaseImageLayer(dssId);
         }
     };
+
+    View.prototype.contains = function(survey) {
+        if (survey instanceof ImageHiPS || survey instanceof ImageFITS) {
+            if (survey.added === true) {
+                return true;
+            }
+
+            // maybe it has not been added yet
+            let found = this.imageLayersBeingQueried
+                .values()
+                .some((s) => {
+                    return s === survey;
+                });
+
+            return found;
+        }
+
+        // Case where survey is a string
+        if(Array.from(this.imageLayers
+            .values())
+            .some((s) => {
+                return s.id === survey;
+            })) {
+                return true;
+            }
+
+        if(Array.from(this.imageLayersBeingQueried
+            .values())
+            .some((s) => {
+                return s.id === survey;
+            })) {
+                return true;
+            }
+
+        return false;
+    }
 
     View.prototype.setHiPSUrl = function (pastUrl, newUrl) {
         try {

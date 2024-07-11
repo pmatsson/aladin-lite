@@ -1,9 +1,11 @@
 pub mod catalog;
-pub mod coverage;
 pub mod final_pass;
+pub mod grid;
 pub mod hips;
 pub mod image;
 pub mod line;
+pub mod moc;
+pub mod shape;
 pub mod text;
 pub mod utils;
 
@@ -23,7 +25,6 @@ use al_api::image::ImageParams;
 use al_core::colormap::Colormaps;
 
 use al_core::shader::Shader;
-use al_core::SliceData;
 use al_core::VertexArrayObject;
 use al_core::WebGlContext;
 
@@ -38,7 +39,6 @@ use crate::{shader::ShaderManager, survey::config::HiPSConfig};
 
 use hips::raytracing::RayTracer;
 
-use std::borrow::Cow;
 use std::collections::HashMap;
 
 use wasm_bindgen::JsValue;
@@ -79,16 +79,19 @@ const DEFAULT_BACKGROUND_COLOR: ColorRGB = ColorRGB {
     b: 0.05,
 };
 
-fn get_backgroundcolor_shader<'a>(gl: &WebGlContext, shaders: &'a mut ShaderManager) -> &'a Shader {
+fn get_backgroundcolor_shader<'a>(
+    gl: &WebGlContext,
+    shaders: &'a mut ShaderManager,
+) -> Result<&'a Shader, JsValue> {
     shaders
         .get(
             gl,
-            &ShaderId(
-                Cow::Borrowed("RayTracerFontVS"),
-                Cow::Borrowed("RayTracerFontFS"),
+            ShaderId(
+                "hips_raytracer_backcolor.vert",
+                "hips_raytracer_backcolor.frag",
             ),
         )
-        .unwrap_abort()
+        .map_err(|e| e.into())
 }
 
 pub struct ImageCfg {
@@ -136,29 +139,12 @@ impl Layers {
                 2,
                 "pos_clip_space",
                 WebGl2RenderingContext::STATIC_DRAW,
-                SliceData::<f32>(&[-1.0, -1.0, 1.0, -1.0, 1.0, 1.0, -1.0, 1.0]),
+                &[-1.0_f32, -1.0, 1.0, -1.0, 1.0, 1.0, -1.0, 1.0] as &[f32],
             )
             // Set the element buffer
             .add_element_buffer(
                 WebGl2RenderingContext::STATIC_DRAW,
-                SliceData::<u16>(&[0, 1, 2, 0, 2, 3]),
-            )
-            // Unbind the buffer
-            .unbind();
-
-        #[cfg(feature = "webgl1")]
-        screen_vao
-            .bind_for_update()
-            .add_array_buffer(
-                2,
-                "pos_clip_space",
-                WebGl2RenderingContext::STATIC_DRAW,
-                SliceData::<f32>(&[-1.0, -1.0, 1.0, -1.0, 1.0, 1.0, -1.0, 1.0]),
-            )
-            // Set the element buffer
-            .add_element_buffer(
-                WebGl2RenderingContext::STATIC_DRAW,
-                SliceData::<u16>(&[0, 1, 2, 0, 2, 3]),
+                &[0_u16, 1, 2, 0, 2, 3] as &[u16],
             )
             // Unbind the buffer
             .unbind();
@@ -258,7 +244,7 @@ impl Layers {
                 &self.screen_vao
             };
 
-            get_backgroundcolor_shader(&self.gl, shaders)
+            get_backgroundcolor_shader(&self.gl, shaders)?
                 .bind(&self.gl)
                 .attach_uniforms_from(camera)
                 .attach_uniform("color", &background_color)
@@ -304,10 +290,8 @@ impl Layers {
                     // 2. Draw it if its opacity is not null
                     survey.draw(shaders, colormaps, camera, raytracer, draw_opt, projection)?;
                 } else if let Some(image) = self.images.get_mut(id) {
-                    image.update(camera, projection)?;
-
                     // 2. Draw it if its opacity is not null
-                    image.draw(shaders, colormaps, draw_opt)?;
+                    image.draw(shaders, colormaps, draw_opt, camera, projection)?;
                 }
             }
         }

@@ -16,7 +16,8 @@
 //extern crate itertools_num;
 //extern crate num;
 //extern crate num_traits;
-use crate::time::Time;
+//use crate::time::Time;
+#[cfg(feature = "dbg")]
 use std::panic;
 
 pub trait Abort {
@@ -84,11 +85,11 @@ use crate::math::angle::ToAngle;
 mod app;
 pub mod async_task;
 mod camera;
+mod shaders;
 
 mod coosys;
 mod downloader;
 mod fifo_cache;
-mod grid;
 mod healpix;
 mod inertia;
 pub mod math;
@@ -140,7 +141,6 @@ pub struct WebClient {
 
 use al_api::hips::ImageMetadata;
 use std::convert::TryInto;
-
 #[wasm_bindgen]
 impl WebClient {
     /// Create the Aladin Lite webgl backend
@@ -153,23 +153,19 @@ impl WebClient {
     #[wasm_bindgen(constructor)]
     pub fn new(
         aladin_div: &HtmlElement,
-        shaders: JsValue,
+        //_shaders: JsValue,
         resources: JsValue,
     ) -> Result<WebClient, JsValue> {
-        //panic::set_hook(Box::new(console_error_panic_hook::hook));
+        #[cfg(feature = "dbg")]
+        panic::set_hook(Box::new(console_error_panic_hook::hook));
 
-        let shaders = serde_wasm_bindgen::from_value(shaders)?;
+        //let shaders = serde_wasm_bindgen::from_value(shaders)?;
         let resources = serde_wasm_bindgen::from_value(resources)?;
         let gl = WebGlContext::new(aladin_div)?;
 
-        let shaders = ShaderManager::new(&gl, shaders).unwrap_abort();
+        let shaders = ShaderManager::new().unwrap_abort();
 
-        // Event listeners callbacks
-        //let callback_position_changed = js_sys::Function::new_no_args("");
-        let app = App::new(
-            &gl, aladin_div, shaders, resources,
-            //callback_position_changed,
-        )?;
+        let app = App::new(&gl, aladin_div, shaders, resources)?;
 
         let dt = DeltaTime::zero();
 
@@ -498,20 +494,30 @@ impl WebClient {
     /// # Arguments
     ///
     /// * `theta` - The rotation angle in degrees
-    #[wasm_bindgen(js_name = setRotationAroundCenter)]
-    pub fn rotate_around_center(&mut self, theta: f64) -> Result<(), JsValue> {
+    #[wasm_bindgen(js_name = setViewCenter2NorthPoleAngle)]
+    pub fn set_view_center_pos_angle(&mut self, theta: f64) -> Result<(), JsValue> {
         let theta = ArcDeg(theta);
-        self.app.rotate_around_center(theta);
+        self.app.set_view_center_pos_angle(theta);
 
         Ok(())
     }
 
     /// Get the absolute orientation angle of the view
-    #[wasm_bindgen(js_name = getRotationAroundCenter)]
-    pub fn get_rotation_around_center(&mut self) -> Result<f64, JsValue> {
-        let theta = self.app.get_rotation_around_center();
+    #[wasm_bindgen(js_name = getViewCenter2NorthPoleAngle)]
+    pub fn get_north_shift_angle(&mut self) -> Result<f64, JsValue> {
+        let phi = self.app.get_north_shift_angle();
+        Ok(phi.to_degrees())
+    }
 
-        Ok(theta.0 * 360.0 / (2.0 * std::f64::consts::PI))
+    #[wasm_bindgen(js_name = getNorthPoleCelestialPosition)]
+    pub fn get_north_pole_celestial_position(&mut self) -> Result<Box<[f64]>, JsValue> {
+        let np = self
+            .app
+            .projection
+            .north_pole_celestial_space(&self.app.camera);
+
+        let (lon, lat) = (np.lon().to_degrees(), np.lat().to_degrees());
+        Ok(Box::new([lon, lat]))
     }
 
     /// Get if the longitude axis is reversed
@@ -573,12 +579,6 @@ impl WebClient {
         let lat_deg: ArcDeg<f64> = lat.into();
 
         Ok(Box::new([lon_deg.0, lat_deg.0]))
-    }
-
-    /// Rest the north pole orientation to the top of the screen
-    #[wasm_bindgen(js_name = resetNorthOrientation)]
-    pub fn reset_north_orientation(&mut self) {
-        self.app.reset_north_orientation();
     }
 
     /// Go from a location to another one

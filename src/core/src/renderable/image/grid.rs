@@ -166,7 +166,7 @@ fn build_range_indices(it: impl Iterator<Item = (u64, f32)> + Clone) -> Vec<Rang
 }
 
 #[allow(dead_code)]
-pub fn get_grid_vertices(
+pub fn vertices(
     xy_min: &(f64, f64),
     xy_max: &(f64, f64),
     max_tex_size: u64,
@@ -175,7 +175,8 @@ pub fn get_grid_vertices(
     wcs: &WCS,
     image_coo_sys: CooSystem,
     projection: &ProjectionType,
-) -> (Vec<[f32; 2]>, Vec<[f32; 2]>, Vec<u16>, Vec<u32>) {
+    towards_east: bool,
+) -> (Vec<f32>, Vec<f32>, Vec<u16>, Vec<u32>) {
     let (x_it, y_it) = get_grid_params(xy_min, xy_max, max_tex_size, num_tri_per_tex_patch);
 
     let idx_x_ranges = build_range_indices(x_it.clone());
@@ -183,8 +184,9 @@ pub fn get_grid_vertices(
 
     let num_x_vertices = idx_x_ranges.last().unwrap().end() + 1;
 
-    let (pos, uv): (Vec<_>, Vec<_>) = y_it
-        .map(move |(y, uvy)| {
+    let mut uv = vec![];
+    let pos = y_it
+        .map(|(y, uvy)| {
             x_it.clone().map(move |(x, uvx)| {
                 let ndc = if let Some(lonlat) = wcs.unproj(&ImgXY::new(x as f64, y as f64)) {
                     let lon = lonlat.lon();
@@ -192,7 +194,7 @@ pub fn get_grid_vertices(
 
                     let xyzw = crate::math::lonlat::radec_to_xyzw(lon.to_angle(), lat.to_angle());
                     let xyzw = crate::coosys::apply_coo_system(
-                        image_coo_sys,
+                        CooSystem::ICRS,
                         camera.get_coo_system(),
                         &xyzw,
                     );
@@ -208,14 +210,24 @@ pub fn get_grid_vertices(
             })
         })
         .flatten()
-        .unzip();
+        .map(|(p, uu)| {
+            uv.extend_from_slice(&uu);
+            p
+        })
+        .collect::<Vec<_>>();
 
     let mut indices = vec![];
     let mut num_indices = vec![];
     for idx_x_range in &idx_x_ranges {
         for idx_y_range in &idx_y_ranges {
-            let build_indices_iter =
-                CCWCheckPatchIndexIter::new(idx_x_range, idx_y_range, num_x_vertices, &pos, camera);
+            let build_indices_iter = CCWCheckPatchIndexIter::new(
+                idx_x_range,
+                idx_y_range,
+                num_x_vertices,
+                &pos,
+                camera,
+                towards_east,
+            );
 
             let patch_indices = build_indices_iter
                 .flatten()
@@ -230,7 +242,7 @@ pub fn get_grid_vertices(
 
     let pos = pos
         .into_iter()
-        .map(|ndc| if let Some(ndc) = ndc { ndc } else { [0.0, 0.0] })
+        .flat_map(|ndc| ndc.unwrap_or([0.0, 0.0]))
         .collect();
 
     (pos, uv, indices, num_indices)

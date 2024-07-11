@@ -2,7 +2,6 @@ use crate::{
     //async_task::{BuildCatalogIndex, ParseTableTask, TaskExecutor, TaskResult, TaskType},
     camera::CameraViewPort,
     downloader::Downloader,
-    grid::ProjetedGrid,
     healpix::coverage::HEALPixCoverage,
     inertia::Inertia,
     math::{
@@ -10,9 +9,10 @@ use crate::{
         angle::{Angle, ArcDeg},
         lonlat::{LonLat, LonLatT},
     },
+    renderable::grid::ProjetedGrid,
     renderable::Layers,
     renderable::{
-        catalog::Manager, coverage::MOCRenderer, line::RasterizedLineRenderer, ImageCfg, Renderer,
+        catalog::Manager, line::RasterizedLineRenderer, moc::MOCRenderer, ImageCfg, Renderer,
     },
     shader::ShaderManager,
     tile_fetcher::TileFetcherQueue,
@@ -52,7 +52,7 @@ pub struct App {
 
     //ui: GuiRef,
     shaders: ShaderManager,
-    camera: CameraViewPort,
+    pub camera: CameraViewPort,
 
     downloader: Downloader,
     tile_fetcher: TileFetcherQueue,
@@ -94,7 +94,7 @@ pub struct App {
 
     colormaps: Colormaps,
 
-    projection: ProjectionType,
+    pub projection: ProjectionType,
 
     // Async data receivers
     fits_send: async_channel::Sender<ImageCfg>,
@@ -145,6 +145,7 @@ impl App {
 
         //gl.enable(WebGl2RenderingContext::CULL_FACE);
         //gl.cull_face(WebGl2RenderingContext::BACK);
+        //gl.enable(WebGl2RenderingContext::CULL_FACE);
 
         // The tile buffer responsible for the tile requests
         let downloader = Downloader::new();
@@ -165,7 +166,7 @@ impl App {
         let manager = Manager::new(&gl, &mut shaders, &camera, &resources)?;
 
         // Grid definition
-        let grid = ProjetedGrid::new(aladin_div)?;
+        let grid = ProjetedGrid::new(gl.clone(), aladin_div)?;
 
         // Variable storing the location to move to
         let inertia = None;
@@ -190,7 +191,7 @@ impl App {
 
         let request_for_new_tiles = true;
 
-        let moc = MOCRenderer::new()?;
+        let moc = MOCRenderer::new(&gl)?;
         gl.clear_color(0.15, 0.15, 0.15, 1.0);
 
         let (fits_send, fits_recv) = async_channel::unbounded::<ImageCfg>();
@@ -522,12 +523,7 @@ impl App {
 
     pub(crate) fn set_moc_cfg(&mut self, cfg: al_api::moc::MOC) -> Result<(), JsValue> {
         self.moc
-            .set_cfg(
-                cfg,
-                &mut self.camera,
-                &self.projection,
-                &mut self.line_renderer,
-            )
+            .set_cfg(cfg, &mut self.camera, &self.projection, &mut self.shaders)
             .ok_or_else(|| JsValue::from_str("MOC not found"))?;
         self.request_redraw = true;
 
@@ -853,16 +849,6 @@ impl App {
         Ok(has_camera_moved)
     }
 
-    pub(crate) fn reset_north_orientation(&mut self) {
-        // Reset the rotation around the center if there is one
-        self.camera
-            .set_rotation_around_center(Angle(0.0), &self.projection);
-        // Reset the camera position to its current position
-        // this will keep the current position but reset the orientation
-        // so that the north pole is at the top of the center.
-        self.set_center(&self.get_center());
-    }
-
     pub(crate) fn read_pixel(&self, pos: &Vector2<f64>, layer: &str) -> Result<JsValue, JsValue> {
         if let Some(lonlat) = self.screen_to_world(pos) {
             if let Some(survey) = self.layers.get_hips_from_layer(layer) {
@@ -962,26 +948,24 @@ impl App {
             //let fbo_view = &self.fbo_view;
             //catalogs.draw(&gl, shaders, camera, colormaps, fbo_view)?;
             //catalogs.draw(&gl, shaders, camera, colormaps, None, self.projection)?;
-            self.line_renderer.begin();
-            //Time::measure_perf("moc draw", || {
             self.moc.draw(
-                &mut self.shaders,
                 &mut self.camera,
                 &self.projection,
-                &mut self.line_renderer,
-            );
+                &mut self.shaders,
+                //&mut self.line_renderer,
+            )?;
+
+            self.line_renderer.begin();
+            //Time::measure_perf("moc draw", || {
 
             //    Ok(())
             //})?;
 
-            self.grid.draw(
-                &self.camera,
-                &mut self.shaders,
-                &self.projection,
-                &mut self.line_renderer,
-            )?;
+            self.grid
+                .draw(&self.camera, &self.projection, &mut self.shaders)?;
             self.line_renderer.end();
-            self.line_renderer.draw(&self.camera)?;
+            self.line_renderer
+                .draw(&mut self.shaders, &self.camera, &self.projection)?;
 
             //let dpi  = self.camera.get_dpi();
             //ui.draw(&gl, dpi)?;
@@ -1411,10 +1395,10 @@ impl App {
 
     pub(crate) fn world_to_screen(&self, ra: f64, dec: f64) -> Option<Vector2<f64>> {
         let lonlat = LonLatT::new(ArcDeg(ra).into(), ArcDeg(dec).into());
-        let model_pos_xyz = lonlat.vector();
+        let icrs_pos = lonlat.vector();
 
         self.projection
-            .view_to_screen_space(&model_pos_xyz, &self.camera)
+            .icrs_celestial_to_screen_space(&icrs_pos, &self.camera)
     }
 
     pub(crate) fn screen_to_world(&self, pos: &Vector2<f64>) -> Option<LonLatT<f64>> {
@@ -1445,11 +1429,11 @@ impl App {
         LonLatT::new(ra, dec)
     }
 
+    /// lonlat must be given in icrs frame
     pub(crate) fn set_center(&mut self, lonlat: &LonLatT<f64>) {
         self.prev_cam_position = self.camera.get_center().truncate();
 
-        self.camera
-            .set_center(lonlat, CooSystem::ICRS, &self.projection);
+        self.camera.set_center(lonlat, &self.projection);
         self.request_for_new_tiles = true;
 
         // And stop the current inertia as well if there is one
@@ -1540,17 +1524,17 @@ impl App {
         self.inertia = Some(Inertia::new(ampl.to_radians(), axis))
     }
 
-    pub(crate) fn rotate_around_center(&mut self, theta: ArcDeg<f64>) {
+    pub(crate) fn set_view_center_pos_angle(&mut self, theta: ArcDeg<f64>) {
         self.camera
-            .set_rotation_around_center(theta.into(), &self.projection);
+            .set_center_pos_angle(theta.into(), &self.projection);
         // New tiles can be needed and some tiles can be removed
         self.request_for_new_tiles = true;
 
         self.request_redraw = true;
     }
 
-    pub(crate) fn get_rotation_around_center(&self) -> &Angle<f64> {
-        self.camera.get_rotation_around_center()
+    pub(crate) fn get_north_shift_angle(&self) -> Angle<f64> {
+        self.camera.get_center_pos_angle()
     }
 
     pub(crate) fn set_fov(&mut self, fov: Angle<f64>) {
@@ -1594,7 +1578,7 @@ impl App {
                 let d = math::vector::angle3(&prev_pos, &cur_pos);
 
                 self.prev_cam_position = self.camera.get_center().truncate();
-                self.camera.rotate(&(-axis), d, &self.projection);
+                self.camera.apply_rotation(&(-axis), d, &self.projection);
 
                 /* 2. Or just set the center to the current position */
                 //self.set_center(&cur_pos.lonlat());

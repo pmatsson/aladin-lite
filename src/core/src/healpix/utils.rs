@@ -30,10 +30,11 @@ pub fn vertices_lonlat<S: BaseFloat>(cell: &HEALPixCell) -> [LonLatT<S>; 4] {
 }
 use crate::Abort;
 /// Get the grid
+#[allow(dead_code)]
 pub fn grid_lonlat<S: BaseFloat>(cell: &HEALPixCell, n_segments_by_side: u16) -> Vec<LonLatT<S>> {
     debug_assert!(n_segments_by_side > 0);
     healpix::nested::grid(cell.depth(), cell.idx(), n_segments_by_side)
-        .into_iter()
+        .iter()
         .map(|(lon, lat)| {
             // Risky wrapping here
             let lon = S::from(*lon).unwrap_abort();

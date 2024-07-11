@@ -52,7 +52,6 @@ import { Input } from "../Widgets/Input.js";
 import { ImageFITS } from "../../ImageFITS.js";
 import { HiPSCache } from "../../DefaultHiPSCache.js";
 import { HiPSBrowserBox } from "./HiPSBrowserBox.js";
-import { ImageHiPS } from "../../ImageHiPS.js";
 
 export class OverlayStackBox extends Box {
     /*static previewImagesUrl = {
@@ -261,28 +260,18 @@ export class OverlayStackBox extends Box {
                                             cursor: "help",
                                         },
                                     },
-                                    content: "More...",
+                                    content: "Browse...",
                                 },
                                 action(o) {
                                     o.stopPropagation();
                                     o.preventDefault();
 
-                                    self._hide();
+                                    if (!self.catBox)
+                                        self.catBox = new CatalogQueryBox(aladin);
 
-                                    if (!self.catBox) {
-                                        self.catBox = new CatalogQueryBox(
-                                            self.aladin
-                                        );
-                                        self.catBox.attach({
-                                            callback: () => {
-                                                self._show();
-                                            },
-                                        });
-                                    }
-
-                                    self.catBox._show({
-                                        position: self.position,
-                                    });
+                                    self.catBox._show({position: {
+                                        anchor: 'center center'
+                                    }});
                                 },
                             },
                         ],
@@ -539,7 +528,17 @@ export class OverlayStackBox extends Box {
                             self.hipsSelectorBox._show({
                                 position: self.position,
                             });*/
-                            self.aladin.addNewImageLayer();
+                            self.aladin.addNewImageLayer(
+                                A.imageHiPS('CDS/P/DSS2/color', {
+                                    errorCallback: (e) => {
+                                        aladin.addStatusBarMessage({
+                                            duration: 2000,
+                                            type: 'info',
+                                            message: 'DSS2 colored HiPS could not plot',
+                                        })
+                                    }
+                                })
+                            );
                         },
                     },
                     {
@@ -577,15 +576,13 @@ export class OverlayStackBox extends Box {
 
                             const image = self.aladin.createImageFITS(
                                 url,
-                                file.name,
-                                undefined,
+                                {name: file.name},
                                 (ra, dec, fov, _) => {
                                     // Center the view around the new fits object
                                     self.aladin.gotoRaDec(ra, dec);
                                     self.aladin.setFoV(fov * 1.1);
                                     //self.aladin.selectLayer(image.layer);
-                                },
-                                undefined
+                                }
                             );
 
                             self.aladin.setOverlayImageLayer(
@@ -713,12 +710,21 @@ export class OverlayStackBox extends Box {
             }
 
             // Update the options of the selector
-            const options = Object.keys(self.cachedHiPS);
-            options.sort();
+            const favorites = Object.keys(self.cachedHiPS);
+
+            // one must add the current HiPS too!
+            favorites.sort();
 
             for (var key in self.HiPSui) {
                 let hips = self.HiPSui[key];
-                hips.HiPSSelector.update({value: hips.HiPSSelector.options.value, options});
+                let currentHiPS = hips.HiPSSelector.options.value
+
+                let favoritesCopy = [...favorites];
+                if (!(currentHiPS in favoritesCopy)) {
+                    favoritesCopy.push(currentHiPS)
+                }
+
+                hips.HiPSSelector.update({value: currentHiPS, options: favoritesCopy});
             }
         });
     }
@@ -736,9 +742,9 @@ export class OverlayStackBox extends Box {
             this.hipsBrowser._hide();
         }*/
 
-        if (this.catBox) {
+        /*if (this.catBox) {
             this.catBox._hide();
-        }
+        }*/
 
         if (this.addOverlayBtn) this.addOverlayBtn.hideMenu();
 
@@ -999,7 +1005,7 @@ export class OverlayStackBox extends Box {
                         // load the moc
                         let moc = A.MOCFromURL(
                             layer.url + "/Moc.fits",
-                            { lineWidth: 3, name: layer.name },
+                            { name: layer.name },
                             () => {
                                 self.mocHiPSUrls[layer.url] = moc;
 

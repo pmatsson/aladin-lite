@@ -36,7 +36,7 @@ export let MOC = (function() {
      *
      * @class
      * @constructs MOC
-     * @param {MOCOptions} options - Configuration options for the MOC.
+     * @param {MOCOptions} options - Configuration options for the MOC
      */
     let MOC = function(options) {
         //this.order = undefined;
@@ -147,6 +147,7 @@ export let MOC = (function() {
                     // json moc
                     self.view.wasm.addJSONMoc(self.mocParams, data);
                 }
+
                 // Add the fetched moc to the rust backend
                 self.ready = true;
 

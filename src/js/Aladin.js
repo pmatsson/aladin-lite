@@ -90,7 +90,7 @@ import { Polyline } from "./shapes/Polyline";
  * @property {number} [fov=60] - Field of view in degrees.
  * @property {string} [backgroundColor="rgb(60, 60, 60)"] - Background color in RGB format.
  *
- * @property {boolean} [showZoomControl=false] - Whether to show the zoom control toolbar.
+ * @property {boolean} [showZoomControl=true] - Whether to show the zoom control toolbar.
  * This element belongs to the FoV UI thus its CSS class is `aladin-fov` 
  * @property {boolean} [showLayersControl=true] - Whether to show the layers control toolbar.
  * CSS class for that button is `aladin-stack-control` 
@@ -376,6 +376,8 @@ export let Aladin = (function () {
             }
         }
 
+        this._setupUI(options);
+
         if (options.survey) {
             if (Array.isArray(options.survey)) {
                 let i = 0;
@@ -562,8 +564,6 @@ export let Aladin = (function () {
         if (options.inertia !== undefined) {
             this.wasm.setInertia(options.inertia);
         }
-
-        this._setupUI(options);
     };
 
     Aladin.prototype._setupUI = function (options) {
@@ -707,7 +707,7 @@ export let Aladin = (function () {
         inertia: true,
         backgroundColor: "rgb(60, 60, 60)",
         // Zoom toolbar
-        showZoomControl: false,
+        showZoomControl: true,
         // Menu toolbar
         showLayersControl: true,
         expandLayersControl: false,
@@ -1428,9 +1428,11 @@ export let Aladin = (function () {
     Aladin.prototype.showSurvey = function (show) {
         this.view.showSurvey(show);
     };
+
     Aladin.prototype.showCatalog = function (show) {
         this.view.showCatalog(show);
     };
+
     Aladin.prototype.showReticle = function (show) {
         this.reticle.update({ show });
     };
@@ -1579,6 +1581,49 @@ export let Aladin = (function () {
     Aladin.createImageSurvey = Aladin.prototype.createImageSurvey;
 
     /**
+     * Remove a HiPS/FITS image from the list of favorites.
+     * 
+     * @throws A warning when the asset is currently present in the view
+     *
+     * @memberof Aladin
+     * @param {string|ImageHiPS|ImageFITS} urlOrHiPSOrFITS - Can be:
+     * <ul>
+     * <li>1. An url that refers to a HiPS</li>
+     * <li>2. Or it can be a CDS identifier that refers to a HiPS. One can found the list of IDs {@link https://aladin.cds.unistra.fr/hips/list| here}</li>
+     * <li>3. A {@link ImageHiPS} HiPS object created from {@link A.imageHiPS}</li>
+     * <li>4. A {@link ImageFITS} FITS image object</li>
+     * </ul>
+     */
+    Aladin.prototype.removeHiPSFromFavorites = function (survey) {
+        if (this.contains(survey)) {
+            // TODO: handle this case
+            console.warn(survey + ' is among the list of HiPS currently in the view.');
+        }
+
+        if (typeof survey !== "string") {
+            survey = survey.id;
+        }
+        
+        HiPSCache.delete(survey);
+    }
+
+    /**
+     * Check whether a survey is currently in the view
+     *
+     * @memberof Aladin
+     * @param {string|ImageHiPS|ImageFITS} urlOrHiPSOrFITS - Can be:
+     * <ul>
+     * <li>1. An url that refers to a HiPS</li>
+     * <li>2. Or it can be a CDS identifier that refers to a HiPS. One can found the list of IDs {@link https://aladin.cds.unistra.fr/hips/list| here}</li>
+     * <li>3. A {@link ImageHiPS} HiPS object created from {@link A.imageHiPS}</li>
+     * <li>4. A {@link ImageFITS} FITS image object</li>
+     * </ul>
+     */
+    Aladin.prototype.contains = function(survey) {
+        this.view.contains(survey)
+    }
+
+    /**
      * Creates a FITS image object
      * @deprecated prefer use {@link A.imageFITS}
      *
@@ -1586,7 +1631,6 @@ export let Aladin = (function () {
      * @memberof Aladin
      * @static
      * @param {string} url - The url of the fits.
-     * @param {string} [name] - A human readable name for that fits.
      * @param {ImageFITSOptions} [options] - Options for rendering the image
      * @param {function} [success] - A success callback
      * @param {function} [error] - A success callback
@@ -1594,7 +1638,6 @@ export let Aladin = (function () {
      */
     Aladin.prototype.createImageFITS = function (
         url,
-        name,
         options,
         successCallback,
         errorCallback
@@ -1630,7 +1673,6 @@ export let Aladin = (function () {
      * @memberof Aladin
      * @static
      * @param {string} url - The url of the fits.
-     * @param {string} [name] - A human readable name for that fits.
      * @param {ImageFITSOptions} [options] - Options for rendering the image
      * @param {function} [success] - A success callback
      * @param {function} [error] - A success callback
@@ -1822,8 +1864,26 @@ export let Aladin = (function () {
         this.view.decreaseZoom(0.01);
     };
 
-    Aladin.prototype.setRotation = function (rotation) {
-        this.view.setRotation(rotation);
+     /**
+     * Set the view center rotation in degrees
+     *
+     * @memberof Aladin
+     * @param {number} rotation - The center rotation in degrees. Positive angles rotates the
+     * view in the counter clockwise order (or towards the east)
+     */
+    Aladin.prototype.setViewCenter2NorthPoleAngle = function (rotation) {
+        this.view.setViewCenter2NorthPoleAngle(rotation);
+    };
+
+     /**
+     * Get the view center to north pole angle in degrees. This is equivalent to getting the 3rd Euler angle
+     *
+     * @memberof Aladin
+     * 
+     * @returns {number} - Angle between the position center and the north pole
+     */
+    Aladin.prototype.getViewCenter2NorthPoleAngle = function () {
+        return this.view.wasm.getViewCenter2NorthPoleAngle();
     };
 
     // @api
@@ -2011,7 +2071,6 @@ aladin.on("positionChanged", ({ra, dec}) => {
             }
         }
         objects = Object.values(objListPerCatalog);
-        console.log(objects);
 
         this.view.selectObjects(objects);
     };
@@ -2220,9 +2279,8 @@ aladin.on("positionChanged", ({ra, dec}) => {
      * Return the current view WCS as a key-value dictionary
      * Can be useful in coordination with getViewDataURL
      *
-     * NOTE + TODO : Rotations are not implemented yet
-     *
-     * @API
+     * @memberof Aladin
+     * @returns {Object} - A JS object describing the WCS of the view.
      */
     Aladin.prototype.getViewWCS = function () {
         // get general view properties
@@ -2232,11 +2290,11 @@ aladin.on("positionChanged", ({ra, dec}) => {
         const height = this.view.height;
 
         // get values common for all
-        let cdelt1 = fov[0] / width;
+        let cdelt1 = -fov[0] / width;
         const cdelt2 = fov[1] / height;
-        const projectionName = this.getProjectionName();
+        const projName = this.getProjectionName();
 
-        if (projectionName == "FEYE")
+        if (projName == "FEYE")
             return "Fish eye projection is not supported by WCS standards.";
 
         // reversed longitude case
@@ -2295,8 +2353,8 @@ aladin.on("positionChanged", ({ra, dec}) => {
             CRPIX2: height / 2 + 0.5,
             CRVAL1: center[0],
             CRVAL2: center[1],
-            CTYPE1: cooType1 + projectionName,
-            CTYPE2: cooType2 + projectionName,
+            CTYPE1: cooType1 + projName,
+            CTYPE2: cooType2 + projName,
             CUNIT1: "deg     ",
             CUNIT2: "deg     ",
             CDELT1: cdelt1,
@@ -2306,6 +2364,44 @@ aladin.on("positionChanged", ({ra, dec}) => {
         // handle the case of equatorial coordinates that need
         // the radecsys keyword
         if (radesys == "ICRS    ") WCS.RADESYS = radesys;
+
+        const isProjZenithal = ['TAN', 'SIN', 'STG', 'ZEA'].some((p) => p === projName)
+        if (isProjZenithal) {
+            // zenithal projections
+            // express the 3rd euler angle for zenithal projection
+            let thirdEulerAngle = this.getViewCenter2NorthPoleAngle();
+            WCS.LONPOLE = 180 - thirdEulerAngle
+        } else {
+            // cylindrical or pseudo-cylindrical projections
+            if (WCS.CRVAL2 === 0) {
+                // ref point on the equator not handled (yet)
+                console.warn('TODO: 3rd euler rotation is not handled for ref point located at delta_0 = 0')
+            } else {
+                // ref point not on the equator
+                const npLonlat = this.view.wasm.getNorthPoleCelestialPosition();
+                let dLon = WCS.CRVAL1 - npLonlat[0];
+
+                // dlon angle must lie between -PI and PI
+                // For dlon angle between -PI;-PI/2 or PI/2;PI one must invert LATPOLE
+                if (this.getViewCenter2NorthPoleAngle() < -90 || this.getViewCenter2NorthPoleAngle() > 90) {
+                    // so that the south pole becomes upward to the ref point
+                    WCS.LATPOLE = -90
+                }
+
+                const toRad = Math.PI / 180
+                const toDeg = 1.0 / toRad;
+
+                // Reverse the Eq 9 from the WCS II paper from Mark Calabretta to obtain LONPOLE
+                // function of CRVAL2 and native coordinates of the fiducial ref point, i.e. (phi_0, theta_0) = (0, 0)
+                // for cylindrical projections 
+                WCS.LONPOLE = Math.asin(Math.sin(dLon * toRad) * Math.cos(WCS.CRVAL2 * toRad)) * toDeg;
+
+                if (WCS.CRVAL2 < 0) {
+                    // ref point is located in the south hemisphere
+                    WCS.LONPOLE = -180 - WCS.LONPOLE;
+                }
+            }
+        }
 
         return WCS;
     };
@@ -2322,17 +2418,7 @@ aladin.on("positionChanged", ({ra, dec}) => {
      * aladin.setFoVRange(30, 60);
      */
     Aladin.prototype.setFoVRange = function (minFoV, maxFoV) {
-        if (minFoV > maxFoV) {
-            var tmp = minFoV;
-            minFoV = maxFoV;
-            maxFoV = tmp;
-        }
-
-        this.view.minFoV = minFoV;
-        this.view.maxFoV = maxFoV;
-
-        // reset the field of view
-        this.setFoV(this.view.fov);
+        this.view.setFoVRange(minFoV, maxFoV);
     };
 
     Aladin.prototype.setFOVRange = Aladin.prototype.setFoVRange;
@@ -2686,7 +2772,6 @@ aladin.displayFITS(
                 this.setFoV(fov);
             });
         const imageFits = this.createImageFITS(
-            url,
             url,
             options,
             successCallback,
