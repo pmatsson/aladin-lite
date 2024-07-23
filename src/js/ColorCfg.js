@@ -245,7 +245,8 @@
         "ylorbr",
         "red",
         "green",
-        "blue"
+        "blue",
+        "planck"
     ];
 
     return ColorCfg;
