@@ -628,21 +628,15 @@ export let View = (function () {
                     (typeof objClickedFunction === 'function') && objClickedFunction(o, xy);
 
                     if (o.isFootprint()) {
-                        if (typeof footprintClickedFunction === 'function' && (!view.lastClickedObject || !view.lastClickedObject.includes(o))) {
+                        if (typeof footprintClickedFunction === 'function') {
                             footprintClickedFunction(o, xy);
                         }
                     }
                     
-                    if (view.lastClickedObject && view.lastClickedObject.includes(o)) {
-                        o.deselect();
-                    } else {
-                        o.select();
-                    }
-                    
                 }
-
                 //view.selectObjects([objs]);
                 view.lastClickedObject = objs;
+                
             } else {
                 // If there is a past clicked object
                 if (view.lastClickedObject) {
