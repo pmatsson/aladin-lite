@@ -57,6 +57,7 @@ pub struct Image {
     scale: f32,
     offset: f32,
     pub cuts: Range<f32>,
+    pub cut_limits: (f32, f32),
 
     /// The center of the fits
     centered_fov: CenteredFoV,
@@ -105,6 +106,21 @@ where
 
     min_val..max_val
 }
+
+
+pub fn compute_cut_limits<T>(slice: &[T]) -> (T, T)
+where
+    T: PartialOrd + Copy + Default,
+{
+    let min_val = slice.iter().min_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Greater)).copied();
+    let max_val = slice.iter().max_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Greater)).copied();
+
+    match (min_val, max_val) {
+        (Some(min), Some(max)) => (min, max),
+        _ => (T::default(), T::default()), // Handle empty slice or non-comparable elements
+    }
+}
+
 
 impl Image {
     pub async fn from_fits_hdu_async<'a, R>(
@@ -156,7 +172,7 @@ impl Image {
 
         let data = hdu.get_data_mut();
 
-        let (textures, channel, mut cuts) = match data {
+        let (textures, channel, mut cuts, cut_limits) = match data {
             stream::Data::U8(data) => {
                 let reader = data.map_ok(|v| v[0].to_le_bytes()).into_async_read();
 
@@ -167,13 +183,17 @@ impl Image {
                     .into_iter()
                     .filter_map(|v| if v == (blank as u8) { None } else { Some(v) })
                     .collect::<Vec<_>>();
+                    
+                let cut_limits = compute_cut_limits(&samples);
 
                 let cuts = compute_automatic_cuts(&mut samples, 1, 99);
                 (
                     textures,
                     ChannelType::R8UI,
                     (cuts.start as f32)..(cuts.end as f32),
+                    (cut_limits.0 as f32, cut_limits.1 as f32)
                 )
+
             }
             stream::Data::I16(data) => {
                 let reader = data.map_ok(|v| v[0].to_le_bytes()).into_async_read();
@@ -186,12 +206,16 @@ impl Image {
                     .filter_map(|v| if v == (blank as i16) { None } else { Some(v) })
                     .collect::<Vec<_>>();
 
+                let cut_limits = compute_cut_limits(&samples);
+
                 let cuts = compute_automatic_cuts(&mut samples, 1, 99);
                 (
                     textures,
                     ChannelType::R16I,
                     (cuts.start as f32)..(cuts.end as f32),
+                    (cut_limits.0 as f32, cut_limits.1 as f32)
                 )
+
             }
             stream::Data::I32(data) => {
                 let reader = data.map_ok(|v| v[0].to_le_bytes()).into_async_read();
@@ -204,11 +228,14 @@ impl Image {
                     .filter_map(|v| if v == (blank as i32) { None } else { Some(v) })
                     .collect::<Vec<_>>();
 
+                let cut_limits = compute_cut_limits(&samples);
+
                 let cuts = compute_automatic_cuts(&mut samples, 1, 99);
                 (
                     textures,
                     ChannelType::R32I,
                     (cuts.start as f32)..(cuts.end as f32),
+                    (cut_limits.0 as f32, cut_limits.1 as f32)
                 )
             }
             stream::Data::I64(data) => {
@@ -232,12 +259,15 @@ impl Image {
                         }
                     })
                     .collect::<Vec<_>>();
-
+                
+                let cut_limits = compute_cut_limits(&samples);
+                
                 let cuts = compute_automatic_cuts(&mut samples, 1, 99);
                 (
                     textures,
                     ChannelType::R32I,
                     (cuts.start as f32)..(cuts.end as f32),
+                    (cut_limits.0 as f32, cut_limits.1 as f32)
                 )
             }
             stream::Data::F32(data) => {
@@ -256,8 +286,10 @@ impl Image {
                     })
                     .collect::<Vec<_>>();
 
+                let cut_limits = compute_cut_limits(&samples);
+
                 let cuts = compute_automatic_cuts(&mut samples, 1, 99);
-                (textures, ChannelType::R32F, cuts)
+                (textures, ChannelType::R32F, cuts, (cut_limits.0 as f32, cut_limits.1 as f32))
             }
             stream::Data::F64(data) => {
                 let reader = data
@@ -280,10 +312,11 @@ impl Image {
                         }
                     })
                     .collect::<Vec<_>>();
+                
+                let cut_limits = compute_cut_limits(&samples);
 
                 let cuts = compute_automatic_cuts(&mut samples, 1, 99);
-
-                (textures, ChannelType::R32F, cuts)
+                (textures, ChannelType::R32F, cuts, (cut_limits.0 as f32, cut_limits.1 as f32))
             }
         };
 
@@ -415,6 +448,7 @@ impl Image {
             channel,
             textures,
             cuts,
+            cut_limits,
             max_tex_size,
             // Indices of textures that must be drawn
             idx_tex,

@@ -111,6 +111,8 @@ impl ImageCfg {
             centered_fov: self.image.get_centered_fov().clone(),
             automatic_min_cut: self.image.cuts.start,
             automatic_max_cut: self.image.cuts.end,
+            min_cut_limit: self.image.cut_limits.0,
+            max_cut_limit: self.image.cut_limits.1
         }
     }
 }

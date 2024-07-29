@@ -49,6 +49,10 @@
         this.minCut = (options && options.minCut) || undefined;
         this.maxCut = (options && options.maxCut) || undefined;
 
+        this.minCutLimit = (options && options.minCutLimit) || undefined;
+        this.maxCutLimit = (options && options.maxCutLimit) || undefined;
+
+
         this.additiveBlending = options && options.additive;
         if (this.additiveBlending === undefined)  {
             this.additiveBlending = false;
@@ -90,6 +94,8 @@
                 stretch: this.stretch,
                 minCut: this.minCut,
                 maxCut: this.maxCut,
+                minCutLimit: this.minCutLimit,
+                maxCutLimit: this.maxCutLimit,
                 reversed: this.reversed,
                 cmapName: this.colormap,
             }
@@ -221,6 +227,15 @@
     ColorCfg.prototype.getCuts = function() {
         return [this.minCut, this.maxCut];
     };
+
+    ColorCfg.prototype.setCutLimits = function(lowLimit, highLimit) {
+        this.minCutLimit = lowLimit;
+        this.maxCutLimit = highLimit;
+    };
+
+    ColorCfg.prototype.getCutLimits = function() {
+        return [this.minCutLimit, this.maxCutLimit];
+    }
 
     ColorCfg.COLORMAPS = [
         "blues",

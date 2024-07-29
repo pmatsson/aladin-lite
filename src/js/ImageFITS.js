@@ -42,6 +42,8 @@ import { HiPSCache } from "./DefaultHiPSCache";
  * @property {boolean} [reversed=false] - If true, the colormap is reversed; otherwise, it is not reversed.
  * @property {number} [minCut] - The minimum cut value for the color configuration. If not given, 0.0 for JPEG/PNG surveys, the value of the property file for FITS surveys
  * @property {number} [maxCut] - The maximum cut value for the color configuration. If not given, 1.0 for JPEG/PNG surveys, the value of the property file for FITS surveys
+ * @property {number} [minCutLimit] - The minimum cut limit for the color configuration.
+ * @property {number} [maxCutLimit] - The minimum cut limit for the color configuration.
  * @property {boolean} [additive=false] - If true, additive blending is applied; otherwise, it is not applied.
  * @property {number} [gamma=1.0] - The gamma correction value for the color configuration.
  * @property {number} [saturation=0.0] - The saturation value for the color configuration.
@@ -128,6 +130,12 @@ export let ImageFITS = (function () {
     ImageFITS.prototype.setCuts = function (lowCut, highCut) {
         this._updateMetadata(() => {
             this.colorCfg.setCuts(lowCut, highCut);
+        });
+    };
+
+    ImageFITS.prototype.setCutLimits = function (lowLimit, highLimit) {
+        this._updateMetadata(() => {
+            this.colorCfg.setCutLimits(lowLimit, highLimit);
         });
     };
 
@@ -225,6 +233,11 @@ export let ImageFITS = (function () {
                         imageParams.automatic_max_cut
                     );
 
+                    image.setCutLimits(
+                        imageParams.min_cut_limit, 
+                        imageParams.max_cut_limit
+                    );
+
                     image.ra = imageParams.centered_fov.ra;
                     image.dec = imageParams.centered_fov.dec;
                     image.fov = imageParams.centered_fov.fov;
@@ -308,6 +321,11 @@ export let ImageFITS = (function () {
     // @api
     ImageFITS.prototype.getCuts = function () {
         return this.colorCfg.getCuts();
+    };
+
+    // @api
+    ImageFITS.prototype.getCutLimits = function () {
+        return this.colorCfg.getCutLimits();
     };
 
     // @api

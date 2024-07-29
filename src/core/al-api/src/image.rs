@@ -15,4 +15,8 @@ pub struct ImageParams {
 
     pub automatic_min_cut: f32,
     pub automatic_max_cut: f32,
+
+    pub min_cut_limit: f32,
+    pub max_cut_limit: f32,
+
 }
