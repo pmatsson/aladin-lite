@@ -1,5 +1,15 @@
 # Changelogs
 
+## [Unreleased]
+
+* [feat] Add support for name removing in `removeOverlay` method
+
+## 3.4.5-beta
+
+* [feat] add `layerChanged` event when a layer is added or removed
+* [deprecate] of `select` event, use `objectsSelected` event instead
+* [ui] add the ability to switch the tile format to download 
+
 ## 3.4.3-beta
 
 * [bugfix] zoom control buttons
