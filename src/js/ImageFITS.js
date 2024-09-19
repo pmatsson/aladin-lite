@@ -283,10 +283,12 @@ export let ImageFITS = (function () {
 
     // @api
     ImageFITS.prototype.toggle = function () {
-        if (this.colorCfg.getOpacity() != 0.0) {
-            this.colorCfg.setOpacity(0.0);
+        const opacity = this.getOpacity()
+        if (opacity != 0.0) {
+            this.prevOpacity = opacity;
+            this.setOpacity(0.0);
         } else {
-            this.colorCfg.setOpacity(this.prevOpacity);
+            this.setOpacity(this.prevOpacity);
         }
     };
 
