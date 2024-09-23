@@ -248,7 +248,7 @@ export let Polyline = (function() {
         return this.closed;
     }
 
-    Polyline.prototype.draw = function(ctx, view, noStroke) {
+    Polyline.prototype.draw = function(ctx, view, noStroke, noSmallCheck) {
         if (! this.isShowing) {
             return false;
         }
@@ -257,6 +257,7 @@ export let Polyline = (function() {
             return false;
         }
 
+        noSmallCheck = noSmallCheck===true || false;
         noStroke = noStroke===true || false;
 
         var baseColor = this.color;
@@ -307,13 +308,18 @@ export let Polyline = (function() {
             ymax = Math.max(ymax, xyview[1]);
         }
 
-        // 2. do not draw the polygon if it lies in less than linewidth pixels
+        // 2. do not draw the polygon if it lies outside the view
         if (xmax < 0 || xmin > view.width || ymax < 0 || ymin > view.height) {
             return false;
         }
 
-        if ((xmax - xmin) < this.lineWidth || (ymax - ymin) < this.lineWidth) {
-            return false;
+        // do not draw neither if the polygone does not lie inside lineWidth
+        if (!noSmallCheck) {
+            this.isTooSmall = (xmax - xmin) < this.lineWidth || (ymax - ymin) < this.lineWidth;
+
+            if (this.isTooSmall) {
+                return false;
+            }
         }
 
         let drawLine;
@@ -349,7 +355,7 @@ export let Polyline = (function() {
                 if (Polyline.isInsideView(l.x1, l.y1, l.x2, l.y2, view.width, view.height)) {
                     const mag2 = _calculateMag2ForNoSinProjections(l, view);
 
-                    if (mag2 < 0.1) {
+                    if (mag2 < 0.2) {
                         _drawLine(l, ctx);
                     }
                 }
@@ -360,7 +366,7 @@ export let Polyline = (function() {
 
                     const mag2 = _calculateMag2ForNoSinProjections(l, view);
 
-                    if (mag2 < 0.1) {
+                    if (mag2 < 0.2) {
                         if (index === 0) {
                             ctx.beginPath();
                             ctx.moveTo(l.x1, l.y1);

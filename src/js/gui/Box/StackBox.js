@@ -35,22 +35,22 @@ import A from "../../A.js";
 import { Utils } from "../../Utils";
 import { View } from "../../View.js";
 import { HiPSSettingsBox } from "./HiPSSettingsBox.js";
-import searchIconUrl from "../../../../assets/icons/search.svg";
+import hipsIconUrl from "../../../../assets/icons/hips.svg";
 import showIconUrl from "../../../../assets/icons/show.svg";
 import addIconUrl from "../../../../assets/icons/plus.svg";
 import hideIconUrl from "../../../../assets/icons/hide.svg";
 import removeIconUrl from "../../../../assets/icons/remove.svg";
 import settingsIconUrl from "../../../../assets/icons/settings.svg";
-
 import searchIconImg from "../../../../assets/icons/search.svg";
+import downloadIconUrl from '../../../../assets/icons/download.svg';
+
 
 import { TogglerActionButton } from "../Button/Toggler.js";
 import { Icon } from "../Widgets/Icon.js";
 import { Box } from "../Widgets/Box.js";
 import { CtxMenuActionButtonOpener } from "../Button/CtxMenuOpener.js";
 import { Input } from "../Widgets/Input.js";
-import { ImageFITS } from "../../ImageFITS.js";
-import { HiPSCache } from "../../DefaultHiPSCache.js";
+import { Image } from "../../Image.js";
 import { HiPSBrowserBox } from "./HiPSBrowserBox.js";
 
 export class OverlayStackBox extends Box {
@@ -120,10 +120,10 @@ export class OverlayStackBox extends Box {
         },
     };
     // Constructor
-    constructor(aladin) {
+    constructor(aladin, stackBtn) {
         super(
             {
-                close: false,
+                close: true,
                 header: {
                     title: "Stack",
                 },
@@ -132,6 +132,7 @@ export class OverlayStackBox extends Box {
             },
             aladin.aladinDiv
         );
+        this.stackBtn = stackBtn;
         this.cachedHiPS = {};
 
         this.aladin = aladin;
@@ -322,8 +323,6 @@ export class OverlayStackBox extends Box {
                                         action(o) {
                                             o.preventDefault();
                                             o.stopPropagation();
-
-                                            //self._hide();
 
                                             self.aladin.select(
                                                 "circle",
@@ -529,7 +528,7 @@ export class OverlayStackBox extends Box {
                                 position: self.position,
                             });*/
                             self.aladin.addNewImageLayer(
-                                A.imageHiPS('CDS/P/DSS2/color', {
+                                A.imageHiPS('P/DSS2/color', {
                                     errorCallback: (e) => {
                                         aladin.addStatusBarMessage({
                                             duration: 2000,
@@ -544,7 +543,7 @@ export class OverlayStackBox extends Box {
                     {
                         label: {
                             icon: {
-                                url: searchIconUrl,
+                                url: hipsIconUrl,
                                 monochrome: true,
                                 tooltip: {
                                     content: "From our database...",
@@ -581,7 +580,8 @@ export class OverlayStackBox extends Box {
                                     // Center the view around the new fits object
                                     self.aladin.gotoRaDec(ra, dec);
                                     self.aladin.setFoV(fov * 1.1);
-                                    //self.aladin.selectLayer(image.layer);
+
+                                    URL.revokeObjectURL(url);
                                 }
                             );
 
@@ -589,6 +589,31 @@ export class OverlayStackBox extends Box {
                                 image,
                                 Utils.uuidv4()
                             );
+                        },
+                    }),
+                    ContextMenu.webkitDir({
+                        label: "Load local HiPS",
+                        action(files) {
+                            let id = files[0].webkitRelativePath.split("/")[0];
+                            let name = id;
+
+                            let hips = self.aladin.createImageSurvey(
+                                id,
+                                name,
+                                files,
+                                null,
+                                null,
+                                {
+                                    errorCallback: (e) => {
+                                        aladin.addStatusBarMessage({
+                                            duration: 2000,
+                                            type: 'info',
+                                            message: 'Could not add the local HiPS',
+                                        })
+                                    }
+                                }
+                            )
+                            self.aladin.addNewImageLayer(hips);
                         },
                     }),
                 ],
@@ -647,13 +672,6 @@ export class OverlayStackBox extends Box {
             }
         );
 
-        ALEvent.HIPS_LAYER_RENAMED.listenedBy(
-            this.aladin.aladinDiv,
-            function (e) {
-                updateOverlayList();
-            }
-        );
-
         ALEvent.HIPS_LAYER_SWAP.listenedBy(this.aladin.aladinDiv, function (e) {
             updateOverlayList();
         });
@@ -696,13 +714,14 @@ export class OverlayStackBox extends Box {
         );
 
         updateOverlayList();
+        let hipsCache = this.aladin.hipsCache;
 
         // Add a listener for HiPS list changes
         ALEvent.HIPS_CACHE_UPDATED.listenedBy(document.body, () => {
             self.cachedHiPS = {};
 
-            for (var key in HiPSCache.cache) {
-                let HiPS = HiPSCache.cache[key];
+            for (var key in hipsCache.cache) {
+                let HiPS = hipsCache.cache[key];
 
                 if (HiPS.name) {
                     self.cachedHiPS[HiPS.name.toString()] = HiPS;
@@ -750,6 +769,9 @@ export class OverlayStackBox extends Box {
 
         if (this.addHiPSBtn) this.addHiPSBtn.hideMenu();
 
+        // toggle the button because the window is closed
+        this.stackBtn.update({toggled: false});
+
         super._hide();
     }
 
@@ -772,7 +794,7 @@ export class OverlayStackBox extends Box {
         );
         layout = layout.concat(this._createSurveysList());
 
-        return Layout.vertical({ layout, classList: ["content"] });
+        return Layout.vertical({ layout });
     }
 
     _createOverlaysList() {
@@ -787,15 +809,13 @@ export class OverlayStackBox extends Box {
         // list of overlays
         for (const overlay of overlays) {
             const name = overlay.name;
-            let showBtn = new ActionButton({
+            let optBtn = [];
+            optBtn.push(new ActionButton({
                 size: "small",
                 icon: {
                     url: overlay.isShowing ? showIconUrl : hideIconUrl,
                     monochrome: true,
                 },
-                /*cssStyle: {
-                    visibility: Utils.hasTouchScreen() ? 'visible' : 'hidden',
-                },*/
                 tooltip: {
                     content: overlay.isShowing ? "Hide" : "Show",
                     position: { direction: "top" },
@@ -815,9 +835,9 @@ export class OverlayStackBox extends Box {
                         });
                     }
                 },
-            });
+            }));
 
-            let deleteBtn = new ActionButton({
+            optBtn.push(new ActionButton({
                 icon: {
                     url: removeIconUrl,
                     monochrome: true,
@@ -833,7 +853,27 @@ export class OverlayStackBox extends Box {
                 action(e) {
                     self.aladin.removeLayer(overlay);
                 },
-            });
+            }));
+
+            if (overlay.serialize) {
+                optBtn.push(new ActionButton({
+                    icon: {
+                        url: downloadIconUrl,
+                        monochrome: true,
+                    },
+                    size: "small",
+                    tooltip: {
+                        content: "Download JSON MOC",
+                        position: { direction: "top" },
+                    },
+                    action(e) {
+                        let json = overlay.serialize('json');
+                        let blob = new Blob([json]);
+                        Utils.download(URL.createObjectURL(blob), overlay.name + '.json');
+                    },
+                }));
+            }
+            
 
             let item = Layout.horizontal({
                 layout: [
@@ -841,7 +881,7 @@ export class OverlayStackBox extends Box {
                     '<div style="background-color: rgba(0, 0, 0, 0.6); padding: 3px; border-radius: 3px; word-break: break-word;">' +
                         name +
                         "</div>",
-                    Layout.horizontal({ layout: [showBtn, deleteBtn] }),
+                    Layout.horizontal({ layout: optBtn }),
                 ],
                 cssStyle: {
                     textAlign: "center",
@@ -895,6 +935,7 @@ export class OverlayStackBox extends Box {
         hipsOptions.sort()
 
         for (const layer of layers) {
+
             let HiPSSelector = Input.select({
                 value: layer.name,
                 options: hipsOptions,
@@ -905,7 +946,7 @@ export class OverlayStackBox extends Box {
                     let HiPS = self.cachedHiPS[name];
 
                     let image;
-                    if (HiPS instanceof ImageFITS) {
+                    if (HiPS instanceof Image) {
                         image = HiPS;
                     } else {
                         // HiPS
@@ -957,8 +998,10 @@ export class OverlayStackBox extends Box {
             });
 
             let settingsBox = new HiPSSettingsBox(self.aladin);
+
             settingsBox.update({ layer });
             settingsBox._hide();
+
 
             let settingsBtn = new TogglerActionButton({
                 icon: { url: settingsIconUrl, monochrome: true },
@@ -969,6 +1012,15 @@ export class OverlayStackBox extends Box {
                 },
                 toggled: false,
                 actionOn: (e) => {
+                    // toggle off the other settings if opened
+                    for (var l in self.HiPSui) {
+                        let ui = self.HiPSui[l]
+
+                        if (l != layer.layer) {
+                            ui.settingsBtn.close();
+                        }
+                    }
+
                     settingsBox._show({
                         position: {
                             nextTo: settingsBtn,
@@ -987,6 +1039,7 @@ export class OverlayStackBox extends Box {
 
                 icon: {
                     url: Icon.dataURLFromSVG({ svg: Icon.SVG_ICONS.MOC }),
+                    size: "small",
                     monochrome: true,
                 },
                 tooltip: {
@@ -1059,7 +1112,7 @@ export class OverlayStackBox extends Box {
 
             let btns = [showBtn, settingsBtn];
 
-            if (!(layer instanceof ImageFITS)) {
+            if (!(layer instanceof Image)) {
                 btns.push(loadMOCBtn);
             }
             btns.push(deleteBtn);
@@ -1133,5 +1186,7 @@ export class OverlayStackBox extends Box {
             ...options,
             ...{ position: this.position },
         });
+
+        this.stackBtn.update({toggled: true});
     }
 }

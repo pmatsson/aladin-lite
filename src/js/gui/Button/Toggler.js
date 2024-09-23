@@ -43,12 +43,25 @@ export class TogglerActionButton extends ActionButton {
             ...options,
             toggled,
             action(o) {
+                options.action && options.action(o);
                 self.toggle(o);
             }
         })
         this.toggled = toggled;
 
         self = this;
+    }
+
+    close() {
+        if (this.toggled) {
+            this.toggle()
+        }
+    }
+
+    open() {
+        if (!this.toggled) {
+            this.toggle();
+        }
     }
 
     toggle(o) {

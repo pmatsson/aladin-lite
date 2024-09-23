@@ -55,7 +55,7 @@ export let Vector = (function() {
         options = options || {};
         this.color     = options['color']     || undefined;
         this.opacity   = options['opacity']   || undefined;
-        this.lineWidth = options["lineWidth"] || undefined;
+        this.lineWidth = options['lineWidth'] || undefined;
         this.selectionColor = options["selectionColor"] || '#00ff00';
         this.hoverColor = options["hoverColor"] || undefined;
         this.arrow = options["arrow"] === undefined ? false : options["arrow"];
@@ -116,7 +116,9 @@ export let Vector = (function() {
             }
 
             let baseColor = this.color || (this.overlay && this.overlay.color) || '#ff0000';
-            let lineWidth = this.lineWidth || this.overlay.lineWidth || 3;
+            if (!this.lineWidth) {
+                this.lineWidth = (this.overlay && this.overlay.lineWidth) || 2;
+            }
 
             // too small
             if(!noSmallCheck) {
@@ -134,7 +136,7 @@ export let Vector = (function() {
                 ctx.strokeStyle = baseColor;
             }
 
-            ctx.lineWidth = lineWidth;
+            ctx.lineWidth = this.lineWidth;
             ctx.globalAlpha = this.opacity;
 
             ctx.beginPath();

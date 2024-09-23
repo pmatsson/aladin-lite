@@ -11,6 +11,7 @@ use crate::time::Time;
 use std::cell::Cell;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
+pub type Url = String;
 pub struct Request<R> {
     data: Arc<Mutex<Option<R>>>,
     time_request: Time,
@@ -55,9 +56,11 @@ where
                 } else {
                     resolved_cloned.set(ResolvedStatus::Failed);
                 }
+
+                Ok(JsValue::from_bool(true))
             };
 
-            wasm_bindgen_futures::spawn_local(fut);
+            let _ = wasm_bindgen_futures::future_to_promise(fut);
         }
 
         Self {

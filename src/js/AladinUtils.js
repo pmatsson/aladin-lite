@@ -28,6 +28,7 @@
  * 
  *****************************************************************************/
 import { Aladin } from "./Aladin";
+import { Sesame } from "./Sesame";
 
 /**
  * @namespace AladinUtils
@@ -143,6 +144,28 @@ export let AladinUtils = {
                 const lonlat = wasm.HEALPixPix2Ang(nside, ipix)
                 return lonlat;
             }
+        },
+
+        /**
+         * @namespace Sesame
+         * @memberof AladinUtils
+         * @description Namespace for Sesame related service.
+         */
+        Sesame: {
+            /**
+             * Find RA, DEC for any target (object name or position) <br/>
+             * if successful, callback is called with an object {ra: {@link number}, dec: {@link number}} <br/>
+             * if not successful, errorCallback is called
+             *
+             * @function
+             * @memberof AladinUtils.Sesame
+             * @name resolveAstronomicalName
+             *
+             * @param {string} target - object name or position
+             * @param {Function} callback - if successful, callback is called with an object {ra: {@link number}, dec: {@link number}}
+             * @param {Function} errorCallback - if not successful, errorCallback is called with the error
+             */
+            resolveAstronomicalName: Sesame.getTargetRADec
         },
 
         /**

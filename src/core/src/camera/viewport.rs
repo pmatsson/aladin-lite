@@ -432,7 +432,7 @@ impl CameraViewPort {
         };*/
 
         let w_screen_px = self.width as f64;
-        let smallest_cell_size_px = 1.0;
+        let smallest_cell_size_px = self.dpi as f64;
         let mut depth_pixel = 29 as usize;
 
         let hpx_cell_size_rad =
@@ -445,6 +445,7 @@ impl CameraViewPort {
 
             depth_pixel = depth_pixel - 1;
         }
+        depth_pixel += 1;
         const DEPTH_OFFSET_TEXTURE: usize = 9;
         self.texture_depth = if DEPTH_OFFSET_TEXTURE > depth_pixel {
             0_u8
@@ -470,12 +471,17 @@ impl CameraViewPort {
         self.update_rot_matrices(proj);
     }
 
-    /// lonlat must be given in icrs frame
+    /// center lonlat must be given in icrs frame
     pub fn set_center(&mut self, lonlat: &LonLatT<f64>, proj: &ProjectionType) {
         let icrs_pos: Vector4<_> = lonlat.vector();
 
         let view_pos = CooSystem::ICRS.to(self.get_coo_system()) * icrs_pos;
-        let rot = Rotation::from_sky_position(&view_pos);
+        let rot_to_center = Rotation::from_sky_position(&view_pos);
+
+        let phi = self.get_center_pos_angle();
+        let third_euler_rot = Rotation::from_axis_angle(&view_pos.truncate(), phi);
+
+        let rot = third_euler_rot * rot_to_center;
 
         // Apply the rotation to the camera to go
         // to the next lonlat

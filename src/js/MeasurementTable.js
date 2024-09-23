@@ -68,17 +68,17 @@ export let MeasurementTable = (function() {
                 title: table.name,
                 label,
                 content,
-                /*cssStyle: {
-                    backgroundColor: rgbColor,
-                    color: labelColor,
-                    padding: '2px',
-                }*/
             }
         });
 
         this.hide();
 
         this.table = new Tabs({
+            tooltip: {
+                global: true,
+                aladin: this.aladin,
+                content: 'Press Shift + mouse wheel for scrolling horizontally'
+            },
             aladin: this.aladin,
             layout,
         }, this.aladin.aladinDiv);

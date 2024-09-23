@@ -46,8 +46,13 @@
             this.reversed = true;
         }
 
-        this.minCut = (options && options.minCut) || undefined;
-        this.maxCut = (options && options.maxCut) || undefined;
+        if (options && Number.isFinite(options.minCut)) {
+            this.minCut = options.minCut;
+        }
+
+        if (options && Number.isFinite(options.maxCut)) {
+            this.maxCut = options.maxCut;
+        }
 
         this.minCutLimit = (options && options.minCutLimit) || 0;
         this.maxCutLimit = (options && options.maxCutLimit) || 1;
@@ -101,9 +106,29 @@
             }
         };
     }
+    
+    ColorCfg.prototype.setOptions = function(options) {
+        if (options.colormap)
+            this.setColormap(options.colormap, options)
+
+        this.setCuts(options.minCut, options.maxCut)
+
+        this.setBrightness(options.brightness)
+        this.setSaturation(options.saturation)
+        this.setContrast(options.contrast)
+        
+        this.setGamma(options.gamma)
+
+        this.setOpacity(options.opacity)
+
+        this.setBlendingConfig(options.additive)
+    }
 
     // @api
     ColorCfg.prototype.setBrightness = function(kBrightness) {
+        if (kBrightness == null || kBrightness == undefined)
+            return;
+
         kBrightness = +kBrightness || 0.0; // coerce to number
         this.kBrightness = Math.max(-1, Math.min(kBrightness, 1));
     };
@@ -115,6 +140,9 @@
 
     // @api
     ColorCfg.prototype.setContrast = function(kContrast) {
+        if (kContrast == null || kContrast == undefined)
+            return;
+
         kContrast = +kContrast || 0.0; // coerce to number
         this.kContrast = Math.max(-1, Math.min(kContrast, 1));
     };
@@ -126,6 +154,9 @@
 
     // @api
     ColorCfg.prototype.setSaturation = function(kSaturation) {
+        if (kSaturation == null || kSaturation == undefined)
+            return;
+
         kSaturation = +kSaturation || 0.0; // coerce to number
 
         this.kSaturation = Math.max(-1, Math.min(kSaturation, 1));
@@ -138,6 +169,9 @@
 
     // @api
     ColorCfg.prototype.setGamma = function(gamma) {
+        if (gamma == null || gamma == undefined)
+            return;
+
         gamma = +gamma; // coerce to number
         this.kGamma = Math.max(0.1, Math.min(gamma, 10));
     };
@@ -149,6 +183,9 @@
 
     // @api
     ColorCfg.prototype.setOpacity = function(opacity) {
+        if (opacity == null || opacity == undefined)
+            return;
+
         opacity = +opacity; // coerce to number
         this.opacity = Math.max(0, Math.min(opacity, 1));
     };
@@ -165,7 +202,10 @@
     ColorCfg.prototype.getAlpha = ColorCfg.prototype.getOpacity;
 
     // @api
-    ColorCfg.prototype.setBlendingConfig = function(additive = false) {
+    ColorCfg.prototype.setBlendingConfig = function(additive) {
+        if (additive === null || additive === undefined)
+            return;
+
         this.additiveBlending = additive;
     };
 
@@ -177,12 +217,12 @@
         /// colormap
         // Make it case insensitive
         colormap = colormap.toLowerCase();
-        if (!ColorCfg.COLORMAPS.includes(colormap)) {
+        /*if (!ColorCfg.COLORMAPS.includes(colormap)) {
             console.warn("The colormap \'" + colormap + "\' is not supported. You should use one of the following: " + ColorCfg.COLORMAPS + "\n\'grayscale\' has been chosen by default.")
             // If the user specify a colormap that is not supported,
             // then set it to grayscale
             colormap = "grayscale";
-        }
+        }*/
 
         return colormap;
     }
@@ -190,6 +230,9 @@
     // @api
     // Optional arguments, 
     ColorCfg.prototype.setColormap = function(colormap = "native", options) {
+        if (colormap == null || colormap == undefined)
+            return;
+
         /// colormap
         // Make it case insensitive
         let cmap = formatColormap(colormap);
@@ -219,9 +262,13 @@
     };
 
     // @api
-    ColorCfg.prototype.setCuts = function(lowCut, highCut) {
-        this.minCut = lowCut;
-        this.maxCut = highCut;
+    ColorCfg.prototype.setCuts = function(minCut, maxCut) {
+        if (minCut === null || minCut === undefined || maxCut === null || maxCut === undefined) {
+            return;
+        }
+
+        this.minCut = minCut;
+        this.maxCut = maxCut;
     };
 
     ColorCfg.prototype.getCuts = function() {

@@ -22,6 +22,7 @@ import { MocServer } from "../../MocServer.js";
 import { Box } from "../Widgets/Box.js";
 import { Dropdown } from "../Input/Dropdown.js";
 import filterOnUrl from "../../../../assets/icons/filter-on.svg";
+import hipsIconUrl from "../../../../assets/icons/hips.svg";
 import filterOffUrl from "../../../../assets/icons/filter-off.svg";
 import { Input } from "../Widgets/Input.js";
 import { TogglerActionButton } from "../Button/Toggler.js";
@@ -31,6 +32,7 @@ import A from "../../A.js";
 import { Utils } from "../../Utils.ts";
 import { ActionButton } from "../Widgets/ActionButton.js";
 import infoIconUrl from "../../../../assets/icons/info.svg"
+import { Icon } from "../Widgets/Icon.js";
 
 /******************************************************************************
  * Aladin Lite project
@@ -49,9 +51,12 @@ export class HiPSBrowserBox extends Box {
         let self;
 
         MocServer.getAllHiPSes().then((HiPSes) => {
+            HiPSBrowserBox.HiPSList = {}
             // Fill the HiPSList from the MOCServer
             HiPSes.forEach((h) => {
-                HiPSBrowserBox.HiPSList[h.obs_title] = h;
+                let name = h.obs_title;
+                name = name.replace(/:|\'/g, '');
+                HiPSBrowserBox.HiPSList[name] = h;
             });
 
             // Initialize the autocompletion without any filtering
@@ -68,7 +73,6 @@ export class HiPSBrowserBox extends Box {
             } catch (e) {
                 // Or he can select a HiPS from the list given
                 const hips = HiPSBrowserBox.HiPSList[value];
-
                 if (hips) {
                     image = hips.ID || hips.hips_service_url;
                 } else {
@@ -200,7 +204,11 @@ export class HiPSBrowserBox extends Box {
             {
                 close: true,
                 header: {
-                    title: "HiPS browser",
+                    title: Layout.horizontal([new Icon({
+                        size: 'medium',
+                        url: hipsIconUrl,
+                        monochrome: true,
+                    }), "HiPS browser"])
                 },
                 onDragged: () => {
                     if (self.filterBtn.toggled) {
@@ -298,14 +306,16 @@ export class HiPSBrowserBox extends Box {
 
         for (var key in HiPSBrowserBox.HiPSList) {
             let HiPS = HiPSBrowserBox.HiPSList[key];
-
             // apply filtering
             if (
                 self.filterCallback &&
                 self.filterCallback(HiPS, params)
             ) {
                 // search with the name or id
-                HiPSIDs.push(HiPS.obs_title);
+                let name = HiPS.obs_title;
+                name = name.replace(/:|\'/g, "");
+
+                HiPSIDs.push(name);
             }
         }
 

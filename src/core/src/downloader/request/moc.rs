@@ -19,7 +19,8 @@ impl From<MOCRequest> for RequestType {
         RequestType::Moc(request)
     }
 }
-use crate::renderable::Url;
+use super::Url;
+
 use moclib::deser::fits;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::JsFuture;
@@ -59,9 +60,9 @@ impl From<query::Moc> for MOCRequest {
 
         let window = web_sys::window().unwrap_abort();
         let request = Request::new(async move {
-            let mut opts = RequestInit::new();
-            opts.method("GET");
-            opts.mode(RequestMode::Cors);
+            let opts = RequestInit::new();
+            opts.set_method("GET");
+            opts.set_mode(RequestMode::Cors);
 
             let request = web_sys::Request::new_with_str_and_init(&url_clone, &opts).unwrap_abort();
             let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
