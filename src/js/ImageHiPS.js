@@ -190,6 +190,7 @@ export let ImageHiPS = (function () {
         this.successCallback = options.successCallback;
 
         this.colorCfg = new ColorCfg(options);
+
     }
 
     ImageHiPS.prototype.setView = function (view) {
@@ -696,6 +697,13 @@ export let ImageHiPS = (function () {
         });
     };
 
+
+    ImageHiPS.prototype.setCutLimits = function (lowLimit, highLimit) {
+        this._updateMetadata(() => {
+            this.colorCfg.setCutLimits(lowLimit, highLimit);
+        });
+    };
+
     /**
      * Sets the gamma correction factor for the ImageHiPS.
      *
@@ -851,6 +859,16 @@ export let ImageHiPS = (function () {
     // @api
     ImageHiPS.prototype.getOpacity = function () {
         return this.colorCfg.getOpacity();
+    };
+
+    // @api
+    ImageHiPS.prototype.getCuts = function () {
+        return this.colorCfg.getCuts();
+    };
+
+    // @api
+    ImageHiPS.prototype.getCutLimits = function () {
+        return this.colorCfg.getCutLimits();
     };
 
     ImageHiPS.prototype.getAlpha = ImageHiPS.prototype.getOpacity;

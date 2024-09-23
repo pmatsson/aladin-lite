@@ -49,8 +49,8 @@
         this.minCut = (options && options.minCut) || undefined;
         this.maxCut = (options && options.maxCut) || undefined;
 
-        this.minCutLimit = (options && options.minCutLimit) || undefined;
-        this.maxCutLimit = (options && options.maxCutLimit) || undefined;
+        this.minCutLimit = (options && options.minCutLimit) || 0;
+        this.maxCutLimit = (options && options.maxCutLimit) || 1;
 
 
         this.additiveBlending = options && options.additive;
