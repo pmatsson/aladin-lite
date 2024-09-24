@@ -3,7 +3,7 @@ name = "aladin-lite"
 description = "Aladin Lite v3 introduces a new graphical engine written in Rust with the use of WebGL"
 license = "BSD-3-Clause"
 repository = "https://github.com/cds-astro/aladin-lite"
-version = "3.4.1-beta"
+version = "3.5.1-beta"
 authors = [ "baumannmatthieu0@gmail.com", "matthieu.baumann@astro.unistra.fr",]
 edition = "2018"
 
@@ -26,30 +26,35 @@ wasm-bindgen = "0.2.79"
 wasm-streams = "0.3.0"
 async-channel = "1.8.0"
 mapproj = "0.3.0"
-fitsrs = "0.2.9"
-wcs = "0.2.8"
+fitsrs = "0.2.11"
 colorgrad = "0.6.2"
-lyon = "1.0.1"
 
 [features]
 webgl1 = [ "al-core/webgl1", "al-api/webgl1", "web-sys/WebGlRenderingContext", "web-sys/AngleInstancedArrays", "web-sys/ExtSRgb", "web-sys/OesTextureFloat",]
 webgl2 = [ "al-core/webgl2", "al-api/webgl2", "web-sys/WebGl2RenderingContext", "web-sys/WebGlVertexArrayObject", "web-sys/ExtColorBufferFloat",]
+dbg = [ "dep:console_error_panic_hook",]
 
 [dev-dependencies]
 rand = "0.8"
+
+[build-dependencies]
+walkdir = "2.3.2"
+
+[dependencies.wcs]
+git = "https://github.com/cds-astro/wcs-rs"
+branch = "master"
+
+[dependencies.console_error_panic_hook]
+version = "0.1.7"
+optional = true
 
 [dependencies.healpix]
 package = "cdshealpix"
 git = "https://github.com/cds-astro/cds-healpix-rust"
 branch = "master"
 
-#[dependencies.moclib]
-#package = "moc"
-#version = "0.14.2"
-
 [dependencies.moclib]
 package = "moc"
-#path = "../../../cds-moc-rust/"
 git = "https://github.com/bmatthieu3/cds-moc-rust"
 branch = "overlap"
 
@@ -65,7 +70,7 @@ path = "./al-api"
 
 [dependencies.web-sys]
 version = "*"
-features = [ "console", "CssStyleDeclaration", "Document", "Element", "HtmlCollection", "HtmlElement", "HtmlImageElement", "HtmlCanvasElement", "Blob", "ImageBitmap", "ImageData", "CanvasRenderingContext2d", "WebGlBuffer", "WebGlContextAttributes", "WebGlFramebuffer", "WebGlProgram", "WebGlShader", "WebGlUniformLocation", "WebGlTexture", "WebGlActiveInfo", "Headers", "Window", "Request", "RequestInit", "RequestMode", "Response", "XmlHttpRequest", "XmlHttpRequestResponseType", "PerformanceTiming", "Performance", "Url", "ReadableStream",]
+features = [ "console", "CssStyleDeclaration", "Document", "Element", "HtmlCollection", "HtmlElement", "HtmlImageElement", "HtmlCanvasElement", "Blob", "ImageBitmap", "ImageData", "CanvasRenderingContext2d", "WebGlBuffer", "WebGlContextAttributes", "WebGlFramebuffer", "WebGlProgram", "WebGlShader", "WebGlUniformLocation", "WebGlTexture", "WebGlActiveInfo", "Headers", "Window", "Request", "RequestInit", "RequestMode", "Response", "XmlHttpRequest", "XmlHttpRequestResponseType", "PerformanceTiming", "Performance", "Url", "ReadableStream", "File", "FileList",]
 
 [dev-dependencies.image-decoder]
 package = "image"
@@ -74,15 +79,7 @@ default-features = false
 features = [ "jpeg", "png",]
 
 [profile.dev]
-opt-level = "z"
 debug = true
-debug-assertions = true
-overflow-checks = true
-lto = true
-panic = "unwind"
-incremental = true
-codegen-units = 256
-rpath = false
 
 [profile.release]
 opt-level = "z"

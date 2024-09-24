@@ -1,8 +1,7 @@
-
 use std::ops::RangeInclusive;
 
-use super::triangle::Triangle;
 use crate::CameraViewPort;
+use cgmath::Vector2;
 
 // This iterator construct indices from a set of vertices defining
 // a grid.
@@ -50,13 +49,34 @@ impl<'a> Iterator for CCWCheckPatchIndexIter<'a> {
 
             match (ndc_tl, ndc_tr, ndc_bl, ndc_br) {
                 (Some(ndc_tl), Some(ndc_tr), Some(ndc_bl), Some(ndc_br)) => {
-                    let t1 = Triangle::new(&ndc_tl, &ndc_tr, &ndc_bl);
-                    let t2 = Triangle::new(&ndc_tr, &ndc_br, &ndc_bl);
+                    let tlc = crate::math::projection::ndc_to_clip_space(
+                        &Vector2::new(ndc_tl[0] as f64, ndc_tl[1] as f64),
+                        &self.camera,
+                    );
+                    let brc = crate::math::projection::ndc_to_clip_space(
+                        &Vector2::new(ndc_br[0] as f64, ndc_br[1] as f64),
+                        &self.camera,
+                    );
 
-                    if !t1.is_invalid(&self.camera) || !t2.is_invalid(&self.camera) {
-                        self.next() // crossing projection tri
+                    let d1 = crate::math::vector::dist2::<f64>(tlc.as_ref(), brc.as_ref());
+                    if d1 > 0.1 {
+                        self.next()
                     } else {
-                        Some(indices)
+                        let trc = crate::math::projection::ndc_to_clip_space(
+                            &Vector2::new(ndc_tr[0] as f64, ndc_tr[1] as f64),
+                            &self.camera,
+                        );
+                        let blc = crate::math::projection::ndc_to_clip_space(
+                            &Vector2::new(ndc_bl[0] as f64, ndc_bl[1] as f64),
+                            &self.camera,
+                        );
+
+                        let d2 = crate::math::vector::dist2::<f64>(trc.as_ref(), blc.as_ref());
+                        if d2 > 0.1 {
+                            self.next()
+                        } else {
+                            Some(indices)
+                        }
                     }
                 }
                 _ => self.next(), // out of proj

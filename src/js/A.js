@@ -40,7 +40,6 @@ import { ProgressiveCat } from "./ProgressiveCat.js";
 import { Source } from "./Source.js";
 import { Coo } from "./libs/astro/coo.js";
 import { URLBuilder } from "./URLBuilder.js";
-import { ColorCfg } from './ColorCfg.js';
 import { Footprint } from './Footprint.js';
 import { Aladin } from "./Aladin.js";
 import { ActionButton } from "./gui/Widgets/ActionButton.js";
@@ -52,8 +51,7 @@ import { Sesame } from "./Sesame.js";
 import init, * as module from './../core/pkg';
 
 // Import aladin css inside the project
-import './../css/aladin.css';
-
+import aladinCSS from './../css/aladin.css?inline';
 
 ///////////////////////////////
 /////// Aladin Lite API ///////
@@ -98,6 +96,13 @@ A.aladin = function (divSelector, options) {
     } else {
         divElement = divSelector;
     }
+
+    // Associate the CSS inside the div
+    var cssStyleSheet = document.createElement('style')
+    cssStyleSheet.classList.add("aladin-css");
+    cssStyleSheet.innerHTML = aladinCSS;
+    divElement.appendChild(cssStyleSheet)
+
     return new Aladin(divElement, options);
 };
 
@@ -105,14 +110,18 @@ A.aladin = function (divSelector, options) {
  * Creates a HiPS image object
  *
  * @function
- * @name A.imageHiPS
+ * @name A.HiPS
  * @memberof A
- * @param {string} id - Can be either an `url` that refers to a HiPS.
- * Or it can be a "CDS ID" pointing towards a HiPS. One can found the list of IDs {@link https://aladin.cds.unistra.fr/hips/list| here}.
- * @param {ImageHiPSOptions} [options] - Options describing the survey
- * @returns {ImageHiPS} - A HiPS image object
+ * @param {string} id - Can be:
+ * <ul>
+ * <li>An http url towards a HiPS.</li>
+ * <li>A relative path to your HiPS</li>
+ * <li>A special ID pointing towards a HiPS. One can found the list of IDs {@link https://aladin.cds.unistra.fr/hips/list| here}</li>
+ * </ul>
+ * @param {HiPSOptions} [options] - Options describing the survey
+ * @returns {HiPS} - A HiPS image object
  */
-A.imageHiPS = function (id, options) {
+A.HiPS = function (id, options) {
     let url = id;
     return Aladin.createImageSurvey(
         id,
@@ -125,19 +134,58 @@ A.imageHiPS = function (id, options) {
 }
 
 /**
+ * @function
+ * @name A.imageHiPS
+ * @memberof A
+ * @deprecated
+ * Old method name, use {@link A.HiPS} instead.
+ */
+ A.imageHiPS = A.HiPS;
+
+/**
  * Creates a celestial source object with the given coordinates.
  *
  * @function
- * @name A.imageFITS
+ * @name A.image
  * @memberof A
  * @param {string} url - Options describing the fits file. An url is mandatory
- * @param {ImageFITSOptions} [options] - Options describing the fits file. An url is mandatory
- * @returns {ImageFITS} - A HiPS image object
+ * @param {ImageOptions} [options] - Options describing the fits file. An url is mandatory
+ * @returns {Image} - A HiPS image object
  * @example
- * const sourceObj = A.source(180.0, 30.0, data, options);
+*  aladin.setOverlayImageLayer(A.image(
+ *       "https://nova.astrometry.net/image/25038473?filename=M61.jpg",
+ *       {
+ *           name: "M61",
+ *           imgFormat: 'jpeg',
+ *           wcs: {
+ *               NAXIS: 0, // Minimal header
+ *               CTYPE1: 'RA---TAN', // TAN (gnomic) projection
+ *               CTYPE2: 'DEC--TAN', // TAN (gnomic) projection
+ *               EQUINOX: 2000.0, // Equatorial coordinates definition (yr)
+ *               LONPOLE: 180.0, // no comment
+ *               LATPOLE: 0.0, // no comment
+ *               CRVAL1: 185.445488837, // RA of reference point
+ *               CRVAL2: 4.47896032431, // DEC of reference point
+ *               CRPIX1: 588.995094299, // X reference pixel
+ *               CRPIX2: 308.307905197, // Y reference pixel
+ *               CUNIT1: 'deg', // X pixel scale units
+ *               CUNIT2: 'deg', // Y pixel scale units
+ *               CD1_1: -0.000223666022989, // Transformation matrix
+ *               CD1_2: 0.000296578064584, // no comment
+ *               CD2_1: -0.000296427555509, // no comment
+ *               CD2_2: -0.000223774308964, // no comment
+ *               NAXIS1: 1080, // Image width, in pixels.
+ *               NAXIS2: 705 // Image height, in pixels.
+ *           },
+ *           successCallback: (ra, dec, fov, image) => {
+ *               aladin.gotoRaDec(ra, dec);
+ *               aladin.setFoV(fov * 5)
+ *           }
+ *       },
+ *   ));
  */
-A.imageFITS = function (url, options) {
-    return Aladin.createImageFITS(url, options.name, options, options.successCallback, options.errorCallback);
+A.image = function (url, options) {
+    return Aladin.createImageFITS(url, options, options.successCallback, options.errorCallback);
 }
 
 /**
@@ -188,7 +236,7 @@ A.marker = function (ra, dec, options, data) {
  * @param {Array.<number[]>} radecArray - right-ascension/declination 2-tuple array describing the polyline's vertices in degrees
  * @param {ShapeOptions} options - Options for configuring the polygon
  * @throws {string} Throws an error if the number of vertices is less than 3.
- * 
+ *
  * @returns {Polyline}
  */
 A.polygon = function (raDecArray, options) {
@@ -201,7 +249,7 @@ A.polygon = function (raDecArray, options) {
     }
 
     options = options || {};
-    //options.closed = true;
+    options.closed = true;
 
     return new Polyline(raDecArray, options);
 };
@@ -215,7 +263,7 @@ A.polygon = function (raDecArray, options) {
  *
  * @param {Array.<number[]>} radecArray - right-ascension/declination 2-tuple array describing the polyline's vertices in degrees
  * @param {ShapeOptions} options - Options for configuring the polyline.
- * 
+ *
  * @returns {Polyline}
  */
 A.polyline = function (raDecArray, options) {
@@ -273,10 +321,11 @@ A.ellipse = function (ra, dec, radiusRaDeg, radiusDecDeg, rotationDeg, options) 
  * @param {number} ra2 - Right Ascension (RA) coordinate of the center in degrees.
  * @param {number} dec2 - Declination (Dec) coordinate of the center in degrees.
  * @param {ShapeOptions} options - Options for configuring the vector.
- * 
+ *
  * @returns {Vector}
  */
 A.vector = function (ra1, dec1, ra2, dec2, options) {
+    options = options || {};
     options['arrow'] = true;
 
     return new Vector(ra1, dec1, ra2, dec2, options);
@@ -339,6 +388,22 @@ A.coo = function (longitude, latitude, prec) {
 };
 
 /**
+ * Creates a new footprint from an array of polygons and optionally a source
+ *
+ * @function
+ * @memberof A
+ * @name footprint
+ *
+ * @param {Circle[]|Polyline[]|Ellipse[]|Vector[]} shapes - an array of A.polygon objects
+ * @param {Source} [source] - a A.source object associated with the footprint
+ * 
+ * @returns {Footprint} Returns a new Footprint object
+ */
+A.footprint = function(shapes, source) {
+    return new Footprint(shapes, source);
+};
+
+/**
  * Parse shapes from a STC-S string
  *
  * @function
@@ -386,19 +451,21 @@ A.MOCFromURL = function (url, options, successCallback, errorCallback) {
  * @param {function} [successCallback] - Callback function when the MOC loads
  * @param {function} [errorCallback] - Callback function when the MOC fails loading
  * @returns {MOC} Returns a new MOC object
- * 
+ *
  * @example
- * var json = {"3":[517],
- *  "4":[2065,2066,2067,2112,2344,2346,2432],
- *   "5":[8221,8257,8258,8259,8293,8304,8305,8307,8308,8452,8456,9346,9352,9354,9736],
- *   "6":[32861,32862,32863,32881,32882,32883,32892,32893,33025,33026,33027,33157,33168,33169,33171,
+ * var json = {
+ *   "3": [517],
+ *   "4": [2065,2066,2067,2112,2344,2346,2432],
+ *   "5": [8221,8257,8258,8259,8293,8304,8305,8307,8308,8452,8456,9346,9352,9354,9736],
+ *   "6": [32861,32862,32863,32881,32882,32883,32892,32893,33025,33026,33027,33157,33168,33169,33171,
  *   33181,33224,33225,33227,33236,33240,33812,33816,33828,33832,37377,37378,37379,37382,37388,
  *   37390,37412,37414,37420,37422,37562,38928,38930,38936,38948,38952],
- *   "7":[131423,131439,131443,131523,131556,131557,131580,131581,132099,132612,132613,132624,132625,132627,132637,
+ *   "7": [131423,131439,131443,131523,131556,131557,131580,131581,132099,132612,132613,132624,132625,132627,132637,
  *   132680,132681,132683,132709,132720,132721,132904,132905,132948,132952,132964,132968,133008,133009,133012,135252,135256,135268,135316,135320,135332,135336,148143,148152,148154,149507,149520
- *   ,149522,149523,149652,149654,149660,149662,149684,149686,149692,149694,149695,150120,150122,150208,150210,150216,150218,150240,150242,150243,155748,155752,155796,155800,155812,155816]};
+ *   ,149522,149523,149652,149654,149660,149662,149684,149686,149692,149694,149695,150120,150122,150208,150210,150216,150218,150240,150242,150243,155748,155752,155796,155800,155812,155816]
+ * };
  * var moc = A.MOCFromJSON(json, {opacity: 0.25, color: 'magenta', lineWidth: 3});
- *   aladin.addMOC(moc);
+ * aladin.addMOC(moc);
  */
 A.MOCFromJSON = function (jsonMOC, options, successCallback, errorCallback) {
     var moc = new MOC(options);
@@ -451,28 +518,6 @@ A.MOCFromPolygon= function (polygon, options, successCallback, errorCallback) {
 
     return moc;
 };
-
-/**
- * Represents options for configuring a catalog.
- *
- * @typedef {Object} CatalogOptions
- * @property {string} url - The URL of the catalog.
- * @property {string} [name="catalog"] - The name of the catalog.
- * @property {string} [color] - The color associated with the catalog.
- * @property {number} [sourceSize=8] - The size of the sources in the catalog.
- * @property {number} [markerSize=12] - The size of the markers associated with sources.
- * @property {string} [shape="square"] - The shape of the sources (e.g., "square", "circle", "rhomb", "triangle", "cross").
- * @property {number} [limit] - The maximum number of sources to display.
- * @property {function} [onClick] - The callback function to execute on a source click.
- * @property {boolean} [readOnly=false] - Whether the catalog is read-only.
- * @property {string} [raField] - The ID or name of the field holding Right Ascension (RA).
- * @property {string} [decField] - The ID or name of the field holding Declination (dec).
- * @property {function} [filter] - The filtering function for sources. Returns a boolean
- * @property {boolean} [displayLabel=false] - Whether to display labels for sources.
- * @property {string} [labelColumn] - The name of the column to be used for the label.
- * @property {string} [labelColor] - The color of the source labels.
- * @property {string} [labelFont="10px sans-serif"] - The font for the source labels.
- */
 
 /**
  * Represents a catalog with configurable options for display and interaction.
@@ -531,7 +576,9 @@ A.catalogFromURL = function (url, options, successCallback, errorCallback, usePr
         catalog.setFields(fields);
         catalog.addSources(sources);
 
-        if ('s_region' in fields && typeof catalog.shape !== 'function') {
+        const s_regionFieldFound = Array.from(Object.keys(fields)).find((f) => f.toLowerCase() === 's_region');
+
+        if (s_regionFieldFound && typeof catalog.shape !== 'function') {
             // set the shape
             catalog.setShape((s) => {
                 if (!s.data.s_region)
@@ -628,7 +675,7 @@ A.catalogFromSimbad = function (target, radius, options, successCallback, errorC
             }
         } else {
             var isObjectName = /[a-zA-Z]/.test(target);
-    
+
             // Try to parse as a position
             if (!isObjectName) {
                 coo = new Coo();
@@ -777,6 +824,7 @@ A.catalogFromSKAORucio = function (target, radiusDegrees, options, successCallba
  *
  * @example
  *      const cat = A.catalogFromVizieR('I/311/hip2', 'M 45', 5, {onClick: 'showTable'});
+ *      const cat2 = A.catalogFromVizieR('I/311/hip2', '12 +9', 5, {onClick: 'showTable'});
  */
 A.catalogFromVizieR = function (vizCatId, target, radius, options, successCallback, errorCallback) {
     options = options || {};
@@ -920,7 +968,7 @@ A.button = function(options) {
  *
  * @param {Object} options - Options for configuring the button.
  * @param {Object} [options.header] - The header of the box
- * @param {boolean} [options.header.draggable=false] - Can move the window by dragging its title. 
+ * @param {boolean} [options.header.draggable=false] - Can move the window by dragging its title.
  * @param {string} [options.header.title] - A title name for the window
  * @param {HTMLElement|string|Widget} [options.content] - The content to be added to the button.
  * @param {CSSStyleSheet} [options.cssStyle] - The CSS styles to apply to the button.
@@ -943,13 +991,9 @@ A.box = function(options) {
     return new Box(options)
 }
 
-A.getAvailableListOfColormaps = function() {
-    return ColorCfg.COLORMAPS;
-};
-
 /**
- * Returns utils object
- * 
+ * Returns Utils object.
+ *
  * This contains utilitary methods such as HEALPix basic or projection methods.
  *
  * @function

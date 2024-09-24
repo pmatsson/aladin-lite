@@ -24,7 +24,8 @@ impl From<AllskyRequest> for RequestType {
     }
 }
 
-use crate::renderable::Url;
+use super::Url;
+
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{RequestInit, RequestMode, Response};
 
@@ -127,9 +128,9 @@ impl From<query::Allsky> for AllskyRequest {
                     Ok(allsky_tiles)
                 }
                 _ => {
-                    let mut opts = RequestInit::new();
-                    opts.method("GET");
-                    opts.mode(RequestMode::Cors);
+                    let opts = RequestInit::new();
+                    opts.set_method("GET");
+                    opts.set_mode(RequestMode::Cors);
                     let window = web_sys::window().unwrap_abort();
 
                     let request = web_sys::Request::new_with_str_and_init(&url_clone, &opts)?;

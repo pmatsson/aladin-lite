@@ -78,7 +78,7 @@ export let URLBuilder = (function() {
             }
 
             if (posParam) {
-                return 'https://ivoa.dachs.srcdev.skao.int/rucio/rucio/cone/form?__nevow_form__=genForm&hscs_pos=' + posParam + '&hscs_sr=' + encodeURIComponent(radiusDegrees * 60) + '&_FORMAT=VOTable&submit=Go';
+                return 'https://dachs.ivoa.srcdev.skao.int/rucio/rucio/cone/form?__nevow_form__=genForm&hscs_pos=' + posParam + '&hscs_sr=' + encodeURIComponent(radiusDegrees * 60) + '&_FORMAT=VOTable&submit=Go';
             }
         },
 
@@ -98,10 +98,20 @@ export let URLBuilder = (function() {
 
             let url = 'https://vizier.unistra.fr/viz-bin/votable?-source=' + vizCatId + '&-c=' + encodeURIComponent(target)+ '&-out.max=' + maxNbSources + '&-c.rd=' + radiusDegrees;
 
+            let colnames = options.colnames || [];
             // request the `s_region` column usually found in ObsCore tables
-            url = url + '&-out.add=s_region';
+            if (!('s_region' in colnames)) {
+                colnames.push('s_region')
+            }
+
             // request the `s_fov` column usually found in ObsCore tables
-            url = url + '&-out.add=s_fov';
+            if (!('s_fov' in colnames)) {
+                colnames.push('s_fov')
+            }
+
+            for (var col of colnames) {
+                url = url + '&-out.add=' + col;
+            }
 
             return url;
             //return 'https://vizier.unistra.fr/viz-bin/conesearch/' + vizCatId + '?ra=' + target.ra + '&dec=' + target.dec + '&sr=' + radiusDegrees;

@@ -34,6 +34,7 @@ import { CatalogQueryBox } from "./gui/Box/CatalogQueryBox.js";
 import cameraIconUrl from '../../assets/icons/camera.svg'
 import targetIconUrl from '../../assets/icons/target.svg';
 import uploadIconUrl from '../../assets/icons/upload.svg';
+import selectIconUrl from '../../assets/icons/select.svg';
 
 export let DefaultActionsForContextMenu = (function () {
 
@@ -101,10 +102,6 @@ export let DefaultActionsForContextMenu = (function () {
                         label: 'New catalogue layer', action(o) {
                             let catBox = new CatalogQueryBox(a)
                             catBox._show({
-                                header: {
-                                    title: 'Add a new catalogue',
-                                    draggable: true
-                                },
                                 position: {
                                     anchor :'center center'
                                 },
@@ -139,14 +136,12 @@ export let DefaultActionsForContextMenu = (function () {
                                     // Consider other cases
                                     const image = a.createImageFITS(
                                         url,
-                                        name,
-                                        undefined,
+                                        {name},
                                         (ra, dec, fov, _) => {
                                             // Center the view around the new fits object
                                             a.gotoRaDec(ra, dec);
                                             a.setFoV(fov * 1.1);
-                                        },
-                                        undefined
+                                        }
                                     );
 
                                     a.setOverlayImageLayer(image, name)
@@ -164,7 +159,7 @@ export let DefaultActionsForContextMenu = (function () {
 
                                 files.forEach(file => {
                                     const url = URL.createObjectURL(file);
-                                    let moc = A.MOCFromURL(url, { name: file.name, fill: true, opacity: 0.4 });
+                                    let moc = A.MOCFromURL(url, { name: file.name });
                                     a.addMOC(moc);
                                 });
                             };
@@ -186,6 +181,30 @@ export let DefaultActionsForContextMenu = (function () {
                                 });
                             };
                             input.click();
+                        }
+                    }
+                ]
+            },
+            {
+                label: {
+                    icon: {
+                        monochrome: true,
+                        url: selectIconUrl,
+                        size: 'small',
+                    },
+                    content: "Select sources"
+                },
+                subMenu: [
+                    {
+                        label: 'Circular',
+                        action(o) {
+                            a.select('circle', selectObjects)
+                        }
+                    },
+                    {
+                        label: 'Rectangular',
+                        action(o) {        
+                            a.select('rect', selectObjects)
                         }
                     }
                 ]
@@ -218,23 +237,6 @@ export let DefaultActionsForContextMenu = (function () {
                     hips2fitsUrl += 'ra=' + radec[0] + '&dec=' + radec[1] + '&fov=' + fov + '&projection=' + proj + '&hips=' + encodeURIComponent(hipsId);
                     window.open(hips2fitsUrl, '_blank');
                 }
-            },
-            {
-                label: "Select sources",
-                subMenu: [
-                    {
-                        label: 'Circular',
-                        action(o) {
-                            a.select('circle', selectObjects)
-                        }
-                    },
-                    {
-                        label: 'Rectangular',
-                        action(o) {        
-                            a.select('rect', selectObjects)
-                        }
-                    }
-                ]
             },
         ]
     }

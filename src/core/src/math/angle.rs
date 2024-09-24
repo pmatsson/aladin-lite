@@ -24,6 +24,7 @@ where
 }
 
 use cgmath::{Deg, Rad};
+use serde::Deserialize;
 // Convert a Rad<T> to an ArcDeg<T>
 impl<T> From<Rad<T>> for ArcDeg<T>
 where
@@ -244,7 +245,7 @@ pub enum SerializeFmt {
     DMS,
     HMS,
     DMM,
-    DD
+    DD,
 }
 
 use al_api::angle_fmt::AngleSerializeFmt;
@@ -362,7 +363,8 @@ impl FormatType for HMS {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Deserialize)]
+#[serde(rename_all = "camelCase")]
 #[repr(C)]
 pub struct Angle<S: BaseFloat>(pub S);
 impl<S> Angle<S>
@@ -452,14 +454,14 @@ where
 
 pub trait ToAngle<S>
 where
-    S: BaseFloat
+    S: BaseFloat,
 {
     fn to_angle(self) -> Angle<S>;
 }
 
 impl<S> ToAngle<S> for S
 where
-    S: BaseFloat
+    S: BaseFloat,
 {
     fn to_angle(self) -> Angle<S> {
         Angle(self)

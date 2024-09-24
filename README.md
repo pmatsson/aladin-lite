@@ -1,4 +1,4 @@
-# Aladin Lite v3
+# [Aladin Lite](https://aladin.u-strasbg.fr/AladinLite)
 
 **An astronomical HiPS visualizer in the browser** <img src="aladin-logo.png" alt="Aladin Lite logo" width="220">
 
@@ -9,22 +9,40 @@ See [A&A 578, A114 (2015)](https://arxiv.org/abs/1505.02291) and [IVOA HiPS Reco
 Aladin Lite is built to be easily embeddable in any web page. It powers astronomical portals like [ESASky](https://sky.esa.int/), [ESO Science Archive portal](http://archive.eso.org/scienceportal/) and [ALMA Portal](https://almascience.eso.org/asax/).
 
 More details on [Aladin Lite documentation page](http://aladin.u-strasbg.fr/AladinLite/doc/).
+A new [API technical documentation](https://cds-astro.github.io/aladin-lite/) is now available.
 
 [![Run tests](https://github.com/cds-astro/aladin-lite/actions/workflows/test.yml/badge.svg)](https://github.com/cds-astro/aladin-lite/actions/workflows/test.yml)
-[![API Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://cds-astro.github.io/aladin-lite)
+[![API Documentation](https://img.shields.io/badge/API-documentation-blue.svg)](https://cds-astro.github.io/aladin-lite)
 
-# How to test it ?
+Aladin Lite is available [at this link](https://aladin.u-strasbg.fr/AladinLite).
 
-Aladin Lite v3 is out! Please play with [Aladin Lite v3 at this link](https://aladin.u-strasbg.fr/AladinLite).
+## Running & editable JS examples
+
+<!-- Examples -->
+<table><tbody>
+<tr><td>Basic Aladin Lite setup</td><td>Load SIMBAD & NED catalog data</td><td>Load a FITS image</td></tr>
+    <tr><td align="left"><a href="https://aladin.cds.unistra.fr/AladinLite/doc/API/examples/AL-in-responsive-div/"><img height="200" src="https://github.com/cds-astro/aladin-lite/blob/develop/assets/vignettes/Basic%20Aladin%20Lite%20instanciation.png?raw=true"></img></a></td>
+        <td align="center"><a href="https://aladin.cds.unistra.fr/AladinLite/doc/API/examples/easy-access-simbad-ned/"><img height="200" src="https://github.com/cds-astro/aladin-lite/blob/develop/assets/vignettes/Load%20SIMBAD%20&%20NED%20catalogs%20data.png?raw=true"></img></a></td>
+        <td align="right"><a href="https://aladin.cds.unistra.fr/AladinLite/doc/API/examples/load-FITS-image-URL/"><img height="200" src="https://github.com/cds-astro/aladin-lite/blob/develop/assets/vignettes/Load%20a%20FITS%20image.png?raw=true"></img></a></td></tr><tr>
+        <td>American Astronomical Society 225<br/>example</td><td>Display proper motion vectors</td><td>Visualization of Mars</td></tr><tr>
+            <td align="left"><a href="https://aladin.cds.unistra.fr/AladinLite/doc/API/examples/AAS225/"><img height="200" src="https://github.com/cds-astro/aladin-lite/blob/develop/assets/vignettes/American%20Astronomical%20Society%20225%20demonstration.png?raw=true"></img></a></td>
+            <td align="center"><a href="https://aladin.cds.unistra.fr/AladinLite/doc/API/examples/show-proper-motions/"><img height="200" src="https://github.com/cds-astro/aladin-lite/blob/develop/assets/vignettes/Display%20proper%20motions.png?raw=true"></img></a></td>
+            <td align="right"><a href="https://aladin.cds.unistra.fr/AladinLite/doc/API/examples/mars-visualisation/"><img height="200" src="https://github.com/cds-astro/aladin-lite/blob/develop/assets/vignettes/Visualization%20of%20Mars.png?raw=true"></img></a></td></tr></tbody></table>
+<!-- Examples -->
 
 ## Releases
 
-For integrating Aladin Lite into your personal website, please refer to this [release page](https://aladin.cds.unistra.fr/AladinLite/doc/release/).
-Always prefer using the latest version. If you want the new features without minding about the bugs coming with it, then the beta is the good way to go.
+A [release page](https://aladin.cds.unistra.fr/AladinLite/doc/release/) keeps track of all the current and previous builds.
+A ``release`` and ``beta`` versions, regularly updated are available. The ``beta`` version is usually more advanced than the ``release`` one but features more error prone and not production-ready code.
 
-## API documentation
+> [!TIP]
+> If you are working on a project that uses Aladin Lite, prefer working with a fixed version. Every build is tagged with a version number and accessible with:
+>
+> ```https://aladin.cds.unistra.fr/AladinLite/api/v3/<version>/aladin.js```
 
-There is a new in progress API documentation at [this link](https://cds-astro.github.io/aladin-lite).
+## Documentation
+
+There is a new API documentation available [here](https://cds-astro.github.io/aladin-lite).
 Editable examples showing the API can also be found [here](https://aladin.cds.unistra.fr/AladinLite/doc/API/examples/).
 
 ## Embed it into your projects
@@ -35,7 +53,7 @@ You can embed Aladin Lite it into your webpages in two ways
 
 Please include [the javascript script of Aladin Lite v3](https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.js) into your project. API differences from the v2 are minimal, here is a snippet of code you can use to embed it into your webpages:
 
-```js
+```html
 <!doctype html>
 <html>
 <head>
@@ -58,60 +76,36 @@ Please include [the javascript script of Aladin Lite v3](https://aladin.cds.unis
 </html>
 ```
 
-### Using the aladin lite NPM package
+### NPM deployment
 
-First, install it with npm:
+A [NPM package](https://www.npmjs.com/package/aladin-lite) is deployed and maintained. It is used by [ipyaladin](https://github.com/cds-astro/ipyaladin), a jupyter widget allowing to run aladin lite in a notebook.
 
 ```npm i aladin-lite```
 
-Second, you can use it that way:
+Aladin Lite can be imported with:
 
-```js
-<!doctype html>
-<html>
-<head>
-    <!-- Mandatory when setting up Aladin Lite v3 for a smartphones/tablet usage -->
-    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no">
-</head>
-<body>
-
-<div id="aladin-lite-div" style="width: 500px; height: 400px"></div>
-
+```html
 <script type="module">
     import A from 'aladin-lite';
-
-    A.init.then(() => {
-        let aladin = A.aladin('#aladin-lite-div', {fov: 360, projection: "AIT", cooFrame: 'equatorial', showCooGridControl: true, showSimbadPointerControl: true, showCooGrid: true});
-    });
 </script>
-
-</body>
-</html>
 ```
 
-## Goals of v3
+## New features
 
-- Rust/WebGL new core integration
-
-- Remove jQuery dep
-
-- UI dev, better support for smartphones
-
-- FITS images support
-
-- easy sharing of current « view »
-
-- support of all VOTable serializations (using votable.js?)
-
-- support of FITS tables?
-
-- creating HiPS instance from an URL
-
-- multiple mirrors handling for HiPS tile retrival
-
-## Source code
-
-Source code is available in the ``src`` directory.
+* [X] Rust/WebGL2 new rendering engine
+* [X] Remove jQuery dep
+* [ ] UI dev, better support for smartphones
+* [X] FITS images support
+* [X] WCS parsing, displaying an (JPEG/PNG) image in aladin lite view
+* [X] Display customized shapes (e.g. proper motions) from astronomical catalog data
+* [X] AVM tags parsing support
+* [X] Easy sharing of current « view »
+* [ ] All VOTable serializations
+* [ ] FITS tables
+* [X] Creating HiPS instance from an URL
+* [X] Local HiPS loading 
+* [X] Multiple mirrors handling for HiPS tile retrival
+* [ ] HiPS cube
 
 ## Licence
 
@@ -119,7 +113,7 @@ Aladin Lite is currently licensed under GPL v3.0
 
 If you think this license might prevent you from using Aladin Lite in your pages/application/portal, please open an issue or [contact us](mailto:cds-question@unistra.fr)
 
-## Contributing
+## Contribution guidelines
 
 There are several ways to contribute to Aladin Lite:
 
@@ -130,12 +124,12 @@ There are several ways to contribute to Aladin Lite:
 - **develop new features/provide code fixing bugs**. As open development is a new thing for us, we will in a first time only take into consideration code contribution (_i.e._ Pull Requests) from our close partners.
 In any case, please get in touch before starting a major update or rewrite.
 
-### Building the application steps
+### Building steps
 
 First you need to install the dependencies from the package.json
 Please run:
 
-```bash
+```sh
 npm install
 ```
 
@@ -146,51 +140,73 @@ You will also need [wasm-pack](https://rustwasm.github.io/wasm-pack/), a tool he
 
 Once it's installed you will need to switch to the nightly rust version:
 
-```bash
+```sh
 rustup default nightly
 ```
 
 Then you can build the project:
 
-```bash
+```sh
 npm run build
 ```
 
-:warning: **If you are experimenting rust error compilations**:
+> [!WARNING]
+> **If you are experimenting Rust compiling issues:**
+> - Make sure you have your **wasm-pack** version updated. To do so:
+> ```sh
+> cargo install wasm-pack --version ~0.12
+> ```
+> - Make sure you are using the rust **nightly** toolchain
+> ```sh
+> rustup default nightly
+> ```
+> - Remove your `src/core/Cargo.lock` file and `src/core/target` directory -- this ensures that you'd escape any bad compilation state:
+> ```sh
+> git clean -di
+> ```
+> -  then recompile with `npm run build`.
 
-- Make sure you have your **wasm-pack** version updated. To do so:
+It will generate the aladin lite compiled code into a `dist/` directory located at the root of the repository. This directory contains two javascript files. `aladin.umd.cjs` follows the UMD module export convention and it is the one you need to use for your project.
 
-```bash
-cargo install wasm-pack --version ~0.12
-```
+### Testing guidelines
 
-- Make sure you are using the rust **nightly** toolchain
-- Remove your `src/core/Cargo.lock` file and `src/core/target` directory -- this ensures that you'd escape any bad compilation state:
+#### Run the examples
 
-```bash
-git clean -di
-```
- 
--  then recompile with `npm run build`.
+A bunch of examples are located into the `examples` directory.
+To run them, start a localhost server:
 
-It will generate the aladin lite compiled code into a `dist/` directory located at the root of the repository. This directory contains two javascript files. `aladin.umd.cjs` follows the UMD module export convention and it is the one you can use for your project.
-
-To run the examples, you can start a localhost server with the following command:
-
-```bash
+```sh
 npm run serve
 ```
 
-For just compiling the rust core, from the root location do:
+#### Rust tests
 
-```bash
+These can be executed separately from the JS part:
+
+* Compile the Rust code:
+
+```sh
 cd src/core
 cargo check --features webgl2
 ```
 
-and run the tests:
+* Run the tests:
 
-```bash
-cd src/core
+```sh
 cargo test --features webgl2
+```
+
+#### Snapshot comparisons
+
+We use [playwright](https://playwright.dev/) for snapshot comparison testing. Only ground truth snapshots have been generated for MacOS/Darwin architecture.
+First install playwright:
+
+```sh
+npx playwright install
+```
+
+Run the tests, advises are given for opening the UI mode or for generating your own ground truth snapshots.
+
+```sh
+npm run test:playwright
 ```

@@ -1,13 +1,16 @@
 pub mod catalog;
-pub mod coverage;
 pub mod final_pass;
+pub mod grid;
 pub mod hips;
 pub mod image;
 pub mod line;
+pub mod moc;
+pub mod shape;
 pub mod text;
 pub mod utils;
 
 use crate::renderable::image::Image;
+use crate::tile_fetcher::TileFetcherQueue;
 
 use al_core::image::format::ChannelType;
 
@@ -23,7 +26,6 @@ use al_api::image::ImageParams;
 use al_core::colormap::Colormaps;
 
 use al_core::shader::Shader;
-use al_core::SliceData;
 use al_core::VertexArrayObject;
 use al_core::WebGlContext;
 
@@ -38,7 +40,6 @@ use crate::{shader::ShaderManager, survey::config::HiPSConfig};
 
 use hips::raytracing::RayTracer;
 
-use std::borrow::Cow;
 use std::collections::HashMap;
 
 use wasm_bindgen::JsValue;
@@ -49,14 +50,15 @@ pub trait Renderer {
     fn end(&mut self);
 }
 
-pub(crate) type Url = String;
+pub(crate) type Id = String; // ID of an image, can be an url or a uuidv4
 pub(crate) type CreatorDid = String;
 
 type LayerId = String;
 pub struct Layers {
     // Surveys to query
     surveys: HashMap<CreatorDid, HiPS>,
-    images: HashMap<Url, Image>,
+    images: HashMap<Id, Vec<Image>>, // an url can contain multiple images i.e. a fits file can contain
+    // multiple image extensions
     // The meta data associated with a layer
     meta: HashMap<LayerId, ImageMetadata>,
     // Hashmap between FITS image urls/HiPS creatorDid and layers
@@ -79,35 +81,39 @@ const DEFAULT_BACKGROUND_COLOR: ColorRGB = ColorRGB {
     b: 0.05,
 };
 
-fn get_backgroundcolor_shader<'a>(gl: &WebGlContext, shaders: &'a mut ShaderManager) -> &'a Shader {
+fn get_backgroundcolor_shader<'a>(
+    gl: &WebGlContext,
+    shaders: &'a mut ShaderManager,
+) -> Result<&'a Shader, JsValue> {
     shaders
         .get(
             gl,
-            &ShaderId(
-                Cow::Borrowed("RayTracerFontVS"),
-                Cow::Borrowed("RayTracerFontFS"),
+            ShaderId(
+                "hips_raytracer_backcolor.vert",
+                "hips_raytracer_backcolor.frag",
             ),
         )
-        .unwrap_abort()
+        .map_err(|e| e.into())
 }
 
-pub struct ImageCfg {
+pub struct ImageLayer {
     /// Layer name
     pub layer: String,
-    pub url: String,
-    pub image: Image,
+    pub id: String,
+    pub images: Vec<Image>,
     /// Its color
     pub meta: ImageMetadata,
 }
 
-impl ImageCfg {
+impl ImageLayer {
     pub fn get_params(&self) -> ImageParams {
+        let cuts = self.images[0].get_cuts();
+
+        let centered_fov = self.images[0].get_centered_fov().clone();
         ImageParams {
-            layer: self.layer.clone(),
-            url: self.url.clone(),
-            centered_fov: self.image.get_centered_fov().clone(),
-            automatic_min_cut: self.image.cuts.start,
-            automatic_max_cut: self.image.cuts.end,
+            centered_fov,
+            min_cut: cuts.start,
+            max_cut: cuts.end,
         }
     }
 }
@@ -136,29 +142,12 @@ impl Layers {
                 2,
                 "pos_clip_space",
                 WebGl2RenderingContext::STATIC_DRAW,
-                SliceData::<f32>(&[-1.0, -1.0, 1.0, -1.0, 1.0, 1.0, -1.0, 1.0]),
+                &[-1.0_f32, -1.0, 1.0, -1.0, 1.0, 1.0, -1.0, 1.0] as &[f32],
             )
             // Set the element buffer
             .add_element_buffer(
                 WebGl2RenderingContext::STATIC_DRAW,
-                SliceData::<u16>(&[0, 1, 2, 0, 2, 3]),
-            )
-            // Unbind the buffer
-            .unbind();
-
-        #[cfg(feature = "webgl1")]
-        screen_vao
-            .bind_for_update()
-            .add_array_buffer(
-                2,
-                "pos_clip_space",
-                WebGl2RenderingContext::STATIC_DRAW,
-                SliceData::<f32>(&[-1.0, -1.0, 1.0, -1.0, 1.0, 1.0, -1.0, 1.0]),
-            )
-            // Set the element buffer
-            .add_element_buffer(
-                WebGl2RenderingContext::STATIC_DRAW,
-                SliceData::<u16>(&[0, 1, 2, 0, 2, 3]),
+                &[0_u16, 1, 2, 0, 2, 3] as &[u16],
             )
             // Unbind the buffer
             .unbind();
@@ -258,7 +247,7 @@ impl Layers {
                 &self.screen_vao
             };
 
-            get_backgroundcolor_shader(&self.gl, shaders)
+            get_backgroundcolor_shader(&self.gl, shaders)?
                 .bind(&self.gl)
                 .attach_uniforms_from(camera)
                 .attach_uniform("color", &background_color)
@@ -303,11 +292,11 @@ impl Layers {
 
                     // 2. Draw it if its opacity is not null
                     survey.draw(shaders, colormaps, camera, raytracer, draw_opt, projection)?;
-                } else if let Some(image) = self.images.get_mut(id) {
-                    image.update(camera, projection)?;
-
+                } else if let Some(images) = self.images.get_mut(id) {
                     // 2. Draw it if its opacity is not null
-                    image.draw(shaders, colormaps, draw_opt)?;
+                    for image in images {
+                        image.draw(shaders, colormaps, draw_opt, camera, projection)?;
+                    }
                 }
             }
         }
@@ -328,6 +317,7 @@ impl Layers {
         layer: &str,
         camera: &mut CameraViewPort,
         proj: &ProjectionType,
+        tile_fetcher: &mut TileFetcherQueue,
     ) -> Result<usize, JsValue> {
         let err_layer_not_found = JsValue::from_str(&format!(
             "Layer {:?} not found, so cannot be removed.",
@@ -362,6 +352,9 @@ impl Layers {
                 let hips_frame = s.get_config().get_frame();
                 // remove the frame
                 camera.unregister_view_frame(hips_frame, proj);
+
+                // remove the local files access from the tile fetcher
+                tile_fetcher.delete_hips_local_files(s.get_config().get_creator_did());
 
                 Ok(id_layer)
             } else if let Some(_) = self.images.remove(&id) {
@@ -430,6 +423,7 @@ impl Layers {
         hips: HiPSCfg,
         camera: &mut CameraViewPort,
         proj: &ProjectionType,
+        tile_fetcher: &mut TileFetcherQueue,
     ) -> Result<&HiPS, JsValue> {
         let HiPSCfg {
             layer,
@@ -443,7 +437,7 @@ impl Layers {
         let layer_already_found = self.layers.iter().any(|l| l == &layer);
 
         let idx = if layer_already_found {
-            let idx = self.remove_layer(&layer, camera, proj)?;
+            let idx = self.remove_layer(&layer, camera, proj, tile_fetcher)?;
             idx
         } else {
             self.layers.len()
@@ -499,16 +493,17 @@ impl Layers {
         Ok(hips)
     }
 
-    pub fn add_image_fits(
+    pub fn add_image(
         &mut self,
-        image: ImageCfg,
+        image: ImageLayer,
         camera: &mut CameraViewPort,
         proj: &ProjectionType,
-    ) -> Result<&Image, JsValue> {
-        let ImageCfg {
+        tile_fetcher: &mut TileFetcherQueue,
+    ) -> Result<&[Image], JsValue> {
+        let ImageLayer {
             layer,
-            url,
-            image,
+            id,
+            images,
             meta,
         } = image;
 
@@ -516,7 +511,7 @@ impl Layers {
         let layer_already_found = self.layers.iter().any(|s| s == &layer);
 
         let idx = if layer_already_found {
-            let idx = self.remove_layer(&layer, camera, proj)?;
+            let idx = self.remove_layer(&layer, camera, proj, tile_fetcher)?;
             idx
         } else {
             self.layers.len()
@@ -536,7 +531,7 @@ impl Layers {
         // The layer does not already exist
         // Let's check if no other hipses points to the
         // same url than `hips`
-        let fits_already_found = self.images.keys().any(|image_url| image_url == &url);
+        let fits_already_found = self.images.keys().any(|image_id| image_id == &id);
 
         if !fits_already_found {
             // The fits has not been loaded yet
@@ -550,16 +545,16 @@ impl Layers {
                 camera.set_aperture::<P>(Angle((initial_fov).to_radians()));
             }*/
 
-            self.images.insert(url.clone(), image);
+            self.images.insert(id.clone(), images);
         }
 
-        self.ids.insert(layer.clone(), url.clone());
+        self.ids.insert(layer.clone(), id.clone());
 
-        let fits = self
+        let img = self
             .images
-            .get(&url)
+            .get(&id)
             .ok_or(JsValue::from_str("Fits image not found"))?;
-        Ok(fits)
+        Ok(img.as_slice())
     }
 
     pub fn get_layer_cfg(&self, layer: &str) -> Result<ImageMetadata, JsValue> {
@@ -584,8 +579,10 @@ impl Layers {
                     survey.recompute_vertices(camera, projection);
                 }
 
-                if let Some(image) = self.get_mut_image_from_layer(layer_ref) {
-                    image.recompute_vertices(camera, projection)?;
+                if let Some(images) = self.get_mut_image_from_layer(layer_ref) {
+                    for image in images {
+                        image.recompute_vertices(camera, projection)?;
+                    }
                 }
             } else if meta_old.visible() && !meta.visible() {
                 // There is an important point here, if we hide a specific layer
@@ -601,8 +598,10 @@ impl Layers {
 
                     if let Some(survey) = self.get_mut_hips_from_layer(&cur_layer) {
                         survey.recompute_vertices(camera, projection);
-                    } else if let Some(image) = self.get_mut_image_from_layer(&cur_layer) {
-                        image.recompute_vertices(camera, projection)?;
+                    } else if let Some(images) = self.get_mut_image_from_layer(&cur_layer) {
+                        for image in images {
+                            image.recompute_vertices(camera, projection)?;
+                        }
                     }
                 }
             }
@@ -650,18 +649,21 @@ impl Layers {
     }
 
     // Fits images getters
-    pub fn get_mut_image_from_layer(&mut self, layer: &str) -> Option<&mut Image> {
+    pub fn get_mut_image_from_layer(&mut self, layer: &str) -> Option<&mut [Image]> {
         if let Some(url) = self.ids.get(layer) {
-            self.images.get_mut(url)
+            self.images.get_mut(url).map(|images| images.as_mut_slice())
         } else {
             None
         }
     }
 
-    pub fn get_image_from_layer(&self, layer: &str) -> Option<&Image> {
-        self.ids
+    pub fn get_image_from_layer(&self, layer: &str) -> Option<&[Image]> {
+        let images = self
+            .ids
             .get(layer)
             .map(|url| self.images.get(url))
-            .flatten()
+            .flatten();
+
+        images.map(|images| images.as_slice())
     }
 }

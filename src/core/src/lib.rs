@@ -16,8 +16,18 @@
 //extern crate itertools_num;
 //extern crate num;
 //extern crate num_traits;
-use crate::time::Time;
+//use crate::time::Time;
+#[cfg(feature = "dbg")]
 use std::panic;
+
+#[macro_export]
+macro_rules! log {
+    // The pattern for a single `eval`
+    ($arg:tt) => {
+        let s = format!("{:?}", $arg);
+        web_sys::console::log_1(&s.into());
+    };
+}
 
 pub trait Abort {
     type Item;
@@ -75,7 +85,9 @@ mod utils;
 
 use math::projection::*;
 
+use moclib::moc::RangeMOCIntoIterator;
 //use votable::votable::VOTableWrapper;
+use crate::tile_fetcher::HiPSLocalFiles;
 use wasm_bindgen::prelude::*;
 use web_sys::HtmlElement;
 
@@ -84,11 +96,11 @@ use crate::math::angle::ToAngle;
 mod app;
 pub mod async_task;
 mod camera;
+mod shaders;
 
 mod coosys;
 mod downloader;
 mod fifo_cache;
-mod grid;
 mod healpix;
 mod inertia;
 pub mod math;
@@ -111,7 +123,6 @@ use std::io::Cursor;
 
 use al_api::color::{Color, ColorRGBA};
 use al_api::coo_system::CooSystem;
-use al_api::hips::FITSCfg;
 use al_api::hips::HiPSProperties;
 
 use al_core::colormap::Colormaps;
@@ -140,7 +151,6 @@ pub struct WebClient {
 
 use al_api::hips::ImageMetadata;
 use std::convert::TryInto;
-
 #[wasm_bindgen]
 impl WebClient {
     /// Create the Aladin Lite webgl backend
@@ -151,25 +161,17 @@ impl WebClient {
     /// * `shaders` - The list of shader objects containing the GLSL code source
     /// * `resources` - Image resource files
     #[wasm_bindgen(constructor)]
-    pub fn new(
-        aladin_div: &HtmlElement,
-        shaders: JsValue,
-        resources: JsValue,
-    ) -> Result<WebClient, JsValue> {
-        //panic::set_hook(Box::new(console_error_panic_hook::hook));
+    pub fn new(aladin_div: &HtmlElement, resources: JsValue) -> Result<WebClient, JsValue> {
+        #[cfg(feature = "dbg")]
+        panic::set_hook(Box::new(console_error_panic_hook::hook));
 
-        let shaders = serde_wasm_bindgen::from_value(shaders)?;
+        //let shaders = serde_wasm_bindgen::from_value(shaders)?;
         let resources = serde_wasm_bindgen::from_value(resources)?;
         let gl = WebGlContext::new(aladin_div)?;
 
-        let shaders = ShaderManager::new(&gl, shaders).unwrap_abort();
+        let shaders = ShaderManager::new().unwrap_abort();
 
-        // Event listeners callbacks
-        //let callback_position_changed = js_sys::Function::new_no_args("");
-        let app = App::new(
-            &gl, aladin_div, shaders, resources,
-            //callback_position_changed,
-        )?;
+        let app = App::new(&gl, aladin_div, shaders, resources)?;
 
         let dt = DeltaTime::zero();
 
@@ -365,20 +367,46 @@ impl WebClient {
     /// * If the number of surveys is greater than 4. For the moment, due to the limitations
     ///   of WebGL2 texture units on some architectures, the total number of surveys rendered is
     ///   limited to 4.
-    #[wasm_bindgen(js_name = addImageHiPS)]
-    pub fn add_image_hips(&mut self, hips: JsValue) -> Result<(), JsValue> {
+    #[wasm_bindgen(js_name = addHiPS)]
+    pub fn add_image_hips(
+        &mut self,
+        hips: JsValue,
+        files: Option<HiPSLocalFiles>,
+    ) -> Result<(), JsValue> {
         // Deserialize the survey objects that compose the survey
         let hips = serde_wasm_bindgen::from_value(hips)?;
-        self.app.add_image_hips(hips)?;
+        self.app.add_image_hips(hips, files)?;
 
         Ok(())
     }
 
     #[wasm_bindgen(js_name = addImageFITS)]
-    pub fn add_image_fits(&mut self, fits_cfg: JsValue) -> Result<js_sys::Promise, JsValue> {
-        let fits_cfg: FITSCfg = serde_wasm_bindgen::from_value(fits_cfg)?;
+    pub fn add_image_fits(
+        &mut self,
+        stream: web_sys::ReadableStream,
+        cfg: JsValue,
+        layer: String,
+    ) -> Result<js_sys::Promise, JsValue> {
+        let cfg: ImageMetadata = serde_wasm_bindgen::from_value(cfg)?;
 
-        self.app.add_image_fits(fits_cfg)
+        self.app.add_image_fits(stream, cfg, layer)
+    }
+
+    #[wasm_bindgen(js_name = addImageWithWCS)]
+    pub fn add_image_with_wcs(
+        &mut self,
+        stream: web_sys::ReadableStream,
+        wcs: JsValue,
+        cfg: JsValue,
+        layer: String,
+    ) -> Result<js_sys::Promise, JsValue> {
+        use wcs::{WCSParams, WCS};
+        let cfg: ImageMetadata = serde_wasm_bindgen::from_value(cfg)?;
+        let wcs_params: WCSParams = serde_wasm_bindgen::from_value(wcs)?;
+        let wcs = WCS::new(&wcs_params).map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+
+        self.app
+            .add_image_from_blob_and_wcs(layer, stream, wcs, cfg)
     }
 
     #[wasm_bindgen(js_name = removeLayer)]
@@ -498,20 +526,30 @@ impl WebClient {
     /// # Arguments
     ///
     /// * `theta` - The rotation angle in degrees
-    #[wasm_bindgen(js_name = setRotationAroundCenter)]
-    pub fn rotate_around_center(&mut self, theta: f64) -> Result<(), JsValue> {
+    #[wasm_bindgen(js_name = setViewCenter2NorthPoleAngle)]
+    pub fn set_view_center_pos_angle(&mut self, theta: f64) -> Result<(), JsValue> {
         let theta = ArcDeg(theta);
-        self.app.rotate_around_center(theta);
+        self.app.set_view_center_pos_angle(theta);
 
         Ok(())
     }
 
     /// Get the absolute orientation angle of the view
-    #[wasm_bindgen(js_name = getRotationAroundCenter)]
-    pub fn get_rotation_around_center(&mut self) -> Result<f64, JsValue> {
-        let theta = self.app.get_rotation_around_center();
+    #[wasm_bindgen(js_name = getViewCenter2NorthPoleAngle)]
+    pub fn get_north_shift_angle(&mut self) -> Result<f64, JsValue> {
+        let phi = self.app.get_north_shift_angle();
+        Ok(phi.to_degrees())
+    }
 
-        Ok(theta.0 * 360.0 / (2.0 * std::f64::consts::PI))
+    #[wasm_bindgen(js_name = getNorthPoleCelestialPosition)]
+    pub fn get_north_pole_celestial_position(&mut self) -> Result<Box<[f64]>, JsValue> {
+        let np = self
+            .app
+            .projection
+            .north_pole_celestial_space(&self.app.camera);
+
+        let (lon, lat) = (np.lon().to_degrees(), np.lat().to_degrees());
+        Ok(Box::new([lon, lat]))
     }
 
     /// Get if the longitude axis is reversed
@@ -573,12 +611,6 @@ impl WebClient {
         let lat_deg: ArcDeg<f64> = lat.into();
 
         Ok(Box::new([lon_deg.0, lat_deg.0]))
-    }
-
-    /// Rest the north pole orientation to the top of the screen
-    #[wasm_bindgen(js_name = resetNorthOrientation)]
-    pub fn reset_north_orientation(&mut self) {
-        self.app.reset_north_orientation();
     }
 
     /// Go from a location to another one
@@ -743,16 +775,16 @@ impl WebClient {
     ///
     /// This is useful for beginning inerting.
     #[wasm_bindgen(js_name = releaseLeftButtonMouse)]
-    pub fn release_left_button_mouse(&mut self, sx: f32, sy: f32) -> Result<(), JsValue> {
-        self.app.release_left_button_mouse(sx, sy);
+    pub fn release_left_button_mouse(&mut self) -> Result<(), JsValue> {
+        self.app.release_left_button_mouse();
 
         Ok(())
     }
 
     /// Signal the backend when the left mouse button has been pressed.
     #[wasm_bindgen(js_name = pressLeftMouseButton)]
-    pub fn press_left_button_mouse(&mut self, sx: f32, sy: f32) -> Result<(), JsValue> {
-        self.app.press_left_button_mouse(sx, sy);
+    pub fn press_left_button_mouse(&mut self) -> Result<(), JsValue> {
+        self.app.press_left_button_mouse();
 
         Ok(())
     }
@@ -1001,7 +1033,7 @@ impl WebClient {
         Ok(())
     }
 
-    #[wasm_bindgen(js_name = addFITSMoc)]
+    #[wasm_bindgen(js_name = addFITSMOC)]
     pub fn add_fits_moc(&mut self, params: &al_api::moc::MOC, data: &[u8]) -> Result<(), JsValue> {
         //let bytes = js_sys::Uint8Array::new(array_buffer).to_vec();
         let moc = match fits::from_fits_ivoa_custom(Cursor::new(&data[..]), false)
@@ -1102,6 +1134,28 @@ impl WebClient {
         let location = LonLatT::new(ArcDeg(lon).into(), ArcDeg(lat).into());
 
         Ok(moc.contains_lonlat(&location))
+    }
+
+    #[wasm_bindgen(js_name = mocSerialize)]
+    pub fn moc_serialize(
+        &mut self,
+        params: &al_api::moc::MOC,
+        _format: String, // todo support the fits/ascii serialization
+    ) -> Result<JsValue, JsValue> {
+        let moc = self
+            .app
+            .get_moc(params)
+            .ok_or_else(|| JsValue::from(js_sys::Error::new("MOC not found")))?;
+
+        let mut buf: Vec<u8> = Default::default();
+        let json = (&moc.0)
+            .into_range_moc_iter()
+            .cells()
+            .to_json_aladin(None, &mut buf)
+            .map(|()| unsafe { String::from_utf8_unchecked(buf) })
+            .map_err(|err| JsValue::from_str(&format!("{:?}", err)))?;
+
+        serde_wasm_bindgen::to_value(&json).map_err(|err| JsValue::from_str(&format!("{:?}", err)))
     }
 
     #[wasm_bindgen(js_name = getMOCSkyFraction)]

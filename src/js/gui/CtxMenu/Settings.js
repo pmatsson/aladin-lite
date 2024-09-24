@@ -153,7 +153,9 @@ export class SettingsCtxMenu extends ContextMenu {
             //ProjectionCtxMenu.getLayout(self.aladin),
             GridSettingsCtxMenu.getLayout(self.aladin),
             {
-                label: 'Reticle',
+                label: {
+                    content: ['Reticle']
+                },
                 subMenu: [
                     {
                         label: {
@@ -170,7 +172,7 @@ export class SettingsCtxMenu extends ContextMenu {
                     {
                         label: {
                             content: [self.reticleColorInput, 'Color']
-                        }
+                        },
                     },
                     {
                         label: Layout.horizontal(['Size', sliderReticleSize]),
