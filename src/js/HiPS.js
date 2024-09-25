@@ -481,7 +481,7 @@ export let HiPS = (function () {
         let isIncompleteOptions = true;
 
         // This is very dirty but it allows me to differentiate the location from whether it is an ID or a plain url
-        let isID = this.url.includes("P/") || this.url.includes("C/")
+        let isID = typeof this.url === 'string' && (this.url.includes("P/") || this.url.includes("C/"))
         
         if (this.imgFormat === "fits") {
             // a fits is given
