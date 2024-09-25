@@ -206,6 +206,7 @@ export let View = (function () {
         this.changeFrame(cooFrame);
 
         this.selector = new Selector(this, this.options.selector);
+        this.manualSelection = (this.options && this.options.manualSelection) || false;
 
         // current reference image survey displayed
         this.imageLayers = new Map();
@@ -575,8 +576,8 @@ export let View = (function () {
             const xymouse = Utils.relMouseCoords(e);
 
             // deselect all the selected sources with Select panel
-            //view.unselectObjects()
-
+            view.unselectObjects();
+            
             try {
                 const [lon, lat] = view.aladin.pix2world(xymouse.x, xymouse.y, 'icrs');
                 view.pointTo(lon, lat);
@@ -618,6 +619,8 @@ export let View = (function () {
         var handleSelect = function(xy, tolerance) {
             tolerance = tolerance || 5;
             var objs = view.closestObjects(xy.x, xy.y, tolerance);
+            
+            view.unselectObjects();
 
             if (objs) {
                 var objClickedFunction = view.aladin.callbacksByEventName['objectClicked'];
@@ -642,11 +645,11 @@ export let View = (function () {
                             footprintClickedFunction(o, xy);
                         }
                     }
-                    
-                    
                 }
 
-                //view.selectObjects([objs]);
+                // rewrite objs
+                objs = Array.from(Object.values(objsByCats));
+                view.selectObjects(objs);
                 view.lastClickedObject = objs;
                 
             } else {
@@ -1429,6 +1432,10 @@ export let View = (function () {
     };
 
     View.prototype.unselectObjects = function() {
+        if (this.manualSelection) {
+            return;
+        }
+
         this.aladin.measurementTable.hide();
 
         if (this.selection) {
@@ -1449,8 +1456,12 @@ export let View = (function () {
 
     View.prototype.selectObjects = function(selection) {
         // unselect the previous selection
-        //this.unselectObjects();
+        if (this.manualSelection) {
+            return;
+        }
 
+        this.unselectObjects();
+        
         if (Array.isArray(selection)) {
             this.selection = selection;
         } else {
