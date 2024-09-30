@@ -227,7 +227,6 @@ export let GraphicOverlay = (function() {
     };
 
     GraphicOverlay.prototype.setView = function(view, idx) {
-        console.trace()
         this.view = view;
 
         this.view.overlays.push(this);

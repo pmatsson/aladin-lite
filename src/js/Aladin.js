@@ -1843,15 +1843,15 @@ export let Aladin = (function () {
             // 3/ It is an image survey.
             imageLayer = urlOrHiPSOrFITS;
 
-            let cachedLayer = hipsCache.get(imageLayer.id)
-            if (!cachedLayer) {
-                hipsCache.append(imageLayer.id, imageLayer)
-            } else {
-                // first set the options of the cached layer to the one of the user
-                cachedLayer.setOptions(imageLayer.options)
-                // if it is in the cache we get it from the cache
-                imageLayer = cachedLayer
-            }
+            // let cachedLayer = hipsCache.get(imageLayer.id)
+            // if (!cachedLayer) {
+            //     hipsCache.append(imageLayer.id, imageLayer)
+            // } else {
+            //     // first set the options of the cached layer to the one of the user
+            //     cachedLayer.setOptions(imageLayer.options)
+            //     // if it is in the cache we get it from the cache
+            //     imageLayer = cachedLayer
+            // }
         }
 
         return this.view.setOverlayImageLayer(imageLayer, layer);
