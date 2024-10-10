@@ -97,7 +97,6 @@ export class PolySelect extends FSM {
                         e.stopPropagation();
                         e.preventDefault()
 
-                        btn.remove();
                         self.dispatch('finish');
                     }
                 });
@@ -123,7 +122,7 @@ export class PolySelect extends FSM {
             // draw the selection
             ctx.save();
             let colorValue = (typeof options.color === 'function') ? options.color() : options.color;
-            ctx.fillStyle = colorValue;
+            ctx.fillStyle = colorValue + '7f';
             ctx.strokeStyle = colorValue;
             ctx.lineWidth = options.lineWidth;
 
@@ -145,6 +144,10 @@ export class PolySelect extends FSM {
         }
 
         let finish = () => {
+            if(btn) {
+                btn.remove();
+            }
+
             // finish the selection
             let xMin = this.coos[0].x
             let yMin = this.coos[0].y
