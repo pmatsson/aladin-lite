@@ -437,8 +437,7 @@ export let View = (function () {
     }
 
     View.prototype.startSelection = function(mode, callback) {
-        this.selector.setMode(mode);
-        this.selector.dispatch('start', {callback});
+        this.selector.start(mode, callback);
     }
 
     View.prototype.setMode = function (mode) {
@@ -791,7 +790,7 @@ export let View = (function () {
                 view.selector.dispatch('mouseup', {coo: xymouse})
             }
         });
-        
+
         // reacting on 'click' rather on 'mouseup' is more reliable when panning the view
         Utils.on(view.catalogCanvas, "click mouseout touchend touchcancel", function (e) {
             const xymouse = Utils.relMouseCoords(e);
@@ -1132,7 +1131,7 @@ export let View = (function () {
         }); //// endof mousemove ////
 
         // disable text selection on IE
-        Utils.on(view.aladinDiv, "selectstart", function () { return false; })
+        //Utils.on(view.aladinDiv, "selectstart", function () { return false; })
         var eventCount = 0;
         var eventCountStart;
         var isTouchPad;
@@ -1247,6 +1246,36 @@ export let View = (function () {
 
             return false;
         });
+
+        Utils.on(view.catalogCanvas, "mouseover", (_) => {
+            view.mouseover = true;
+        });
+
+        Utils.on(view.catalogCanvas, "mouseout", (_) => {
+            view.mouseover = false;
+        });
+
+        Utils.on(window, "keydown", function (e) {
+            // check first if the user mouse over the aladin div
+            if (!view.mouseover)
+                return;
+
+            switch (e.keyCode) {
+                // shift
+                case 16:
+                    view.aladin.select('rect', (selection) => {
+                        view.selectObjects(selection);
+                    })
+                    break;
+                // escape
+                case 27:
+                    view.selector.cancel()
+                    break;
+                default:
+                    break;
+                
+            }
+        });
     };
 
     var init = function (view) {
@@ -1288,6 +1317,7 @@ export let View = (function () {
      */
     View.prototype.redraw = function (timestamp) {
         // request another frame
+        requestAnimFrame(this.redrawClbk);
 
         // Elapsed time since last loop
         const now = performance.now();
@@ -1311,7 +1341,6 @@ export let View = (function () {
         this.needRedraw = false;
 
         //this.then = now % View.FPS_INTERVAL;
-        requestAnimFrame(this.redrawClbk);
     };
 
     View.prototype.drawAllOverlays = function () {
@@ -1649,7 +1678,7 @@ export let View = (function () {
     View.prototype.setOverlayImageLayer = function (imageLayer, layer = "overlay") {
         // set the view to the image layer object
         // do the properties query if needed
-        imageLayer.setView(this);
+        imageLayer._setView(this);
 
         // register its promise
         this.imageLayersBeingQueried.set(layer, imageLayer);
@@ -1710,7 +1739,7 @@ export let View = (function () {
             // to the image layer objet (whether it is an HiPS or an Image)
             .then((imageLayer) => {
                 // Add to the backend
-                const promise = imageLayer.add(layer);
+                const promise = imageLayer._add(layer);
                 ALEvent.FETCH.dispatchedTo(document, {task});
 
                 return promise;

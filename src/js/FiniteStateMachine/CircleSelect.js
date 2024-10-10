@@ -115,19 +115,27 @@ export class CircleSelect extends FSM {
             // execute selection callback only
             (typeof this.callback === 'function') && this.callback(s, Selector.getObjects(s, view));
 
-            // TODO: remove these modes in the future
+            this.dispatch("off");
+        };
+
+        let mouseout = mouseup;
+
+        let off = () => {
             view.aladin.showReticle(true)
             view.setCursor('default');
 
             view.setMode(View.PAN)
             view.requestRedraw();
+
+            view.aladin.removeStatusBarMessage('selector')
         };
 
-        let mouseout = mouseup;
-
         super({
-            state: 'mouseup',
+            state: 'off',
             transitions: {
+                off: {
+                    start,
+                },
                 start: {
                     mousedown
                 },
@@ -145,10 +153,10 @@ export class CircleSelect extends FSM {
                     mouseout
                 },
                 mouseout: {
-                    start
+                    off
                 },
                 mouseup: {
-                    start,
+                    off,
                 }
             }
         })

@@ -19,15 +19,14 @@ import { ALEvent } from "./events/ALEvent.js";
 * @typedef {Object} MOCOptions
 * @description Options for configuring a MOC (Multi-Order-Coverage).
 *
-* @property {Object} options - Configuration options for the MOC.
-* @property {string} [options.name="MOC"] - The name of the catalog.
-* @property {string} [options.color] - The color of the MOC HEALPix cell edges.
-* @property {string} [options.fillColor] - A filling color of the MOC HEALPix cells.
-* @property {string} [options.fill=false] - Fill the MOC with `options.fillColor`
-* @property {string} [options.edge=true] - Draw the edges of the HEALPix cells with `options.color`.
-* @property {number} [options.lineWidth=3] - The line width in pixels 
-* @property {Boolean} [options.perimeter=false] - A filling color of the MOC HEALPix cells.
-* @property {number} [options.opacity=1.0] - The opacity of the MOC
+* @property {string} [name="MOC"] - The name of the catalog.
+* @property {string} [color] - The color of the MOC HEALPix cell edges.
+* @property {string} [fillColor] - A filling color of the MOC HEALPix cells.
+* @property {string} [fill=false] - Fill the MOC with `options.fillColor`
+* @property {string} [edge=true] - Draw the edges of the HEALPix cells with `options.color`.
+* @property {number} [lineWidth=3] - The line width in pixels 
+* @property {Boolean} [perimeter=false] - A filling color of the MOC HEALPix cells.
+* @property {number} [opacity=1.0] - The opacity of the MOC
 */
 
 export let MOC = (function() {
@@ -95,6 +94,10 @@ export let MOC = (function() {
     /**
      *  Return a value between 0 and 1 denoting the fraction of the sky
      *  covered by the MOC
+     * 
+     * @memberof MOC
+     * 
+     * @returns {number} The sky fraction covered by the MOC 
      */
     MOC.prototype.skyFraction = function() {
         return this.skyFrac;
@@ -191,6 +194,11 @@ export let MOC = (function() {
         }
     };
 
+    /**
+     * Show the MOC object 
+     *
+     * @memberof MOC
+     */
     MOC.prototype.show = function() {
         if (this.isShowing) {
             return;
@@ -199,6 +207,11 @@ export let MOC = (function() {
         this.reportChange();
     };
 
+    /**
+     * Hide the MOC object 
+     *
+     * @memberof MOC
+     */
     MOC.prototype.hide = function() {
         if (! this.isShowing) {
             return;
@@ -207,9 +220,15 @@ export let MOC = (function() {
         this.reportChange();
     };
 
-    // Tests whether a given (ra, dec) point on the sky is within the current MOC object
-    //
-    // returns true if point is contained, false otherwise
+    /**
+     * Tests whether a given (ra, dec) point on the sky is within the current MOC object
+     *
+     * @memberof MOC
+     * @param {number} ra - Right-Ascension of the location in degrees and ICRS frame
+     * @param {number} dec - Declination of the location in degrees and ICRS frame
+     *
+     * @returns {boolean} True if the point is contained, false otherwise
+     */
     MOC.prototype.contains = function(ra, dec) {
         if (!this.ready) {
             throw this.name + " is not yet ready, either because it has not been downloaded yet or because it has not been added to the aladin instance."
@@ -222,8 +241,8 @@ export let MOC = (function() {
      /**
      * Serialize a MOC into different format
      *
-     * @memberof Aladin
-     * @param {string} [format='json'] - The output format. Only json is currently supported but 'fits' could be added.
+     * @memberof MOC
+     * @param {string} [format='json'] - The output format. Only `json` is currently supported but `fits` could be added.
      */
     MOC.prototype.serialize = function(format) {
         if (!this.ready) {

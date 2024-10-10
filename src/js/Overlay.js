@@ -38,11 +38,10 @@ import { Color } from './Color';
 * @typedef {Object} GraphicOverlayOptions
 * @description Options for configuring the graphic overlay
 *
-* @property {Object} options - Configuration options for the MOC.
-* @property {string} [options.name="overlay"] - The name of the catalog.
-* @property {string} [options.color] - A string parsed as CSS <color> value. See {@link https://developer.mozilla.org/en-US/docs/Web/CSS/color_value| here}
-* @property {number} [options.lineWidth=3] - The line width in pixels
-* @property {Array.<number>} [options.lineDash=[]] - Dash line option. See the segments property {@link https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/setLineDash#segments| here}
+* @property {string} [name="overlay"] - The name of the catalog.
+* @property {string} [color] - A string parsed as CSS <color> value. See {@link https://developer.mozilla.org/en-US/docs/Web/CSS/color_value| here}
+* @property {number} [lineWidth=3] - The line width in pixels
+* @property {Array.<number>} [lineDash=[]] - Dash line option. See the segments property {@link https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/setLineDash#segments| here}
 */
 
 export let GraphicOverlay = (function() {
@@ -76,6 +75,11 @@ export let GraphicOverlay = (function() {
 
 
     // TODO : show/hide methods should be integrated in a parent class
+    /**
+     * Show the graphic overlay
+     *
+     * @memberof GraphicOverlay
+     */
     GraphicOverlay.prototype.show = function() {
         if (this.isShowing) {
             return;
@@ -87,6 +91,11 @@ export let GraphicOverlay = (function() {
         this.reportChange();
     };
 
+     /**
+     * Hide the graphic overlay
+     *
+     * @memberof GraphicOverlay
+     */
     GraphicOverlay.prototype.hide = function() {
         if (! this.isShowing) {
             return;
@@ -98,6 +107,11 @@ export let GraphicOverlay = (function() {
         this.reportChange();
     };
 
+     /**
+     * Toggle on/off the graphic overlay
+     *
+     * @memberof GraphicOverlay
+     */
     GraphicOverlay.prototype.toggle = function() {
         if (! this.isShowing) {
             this.show()
@@ -107,6 +121,13 @@ export let GraphicOverlay = (function() {
     };
 
     // return an array of Footprint from a STC-S string
+    /**
+     * Parse a STCS string and returns a list of footprints (only circles, polygons and ellipses given in ICRS frame are handled).
+     *
+     * @memberof GraphicOverlay
+     * 
+     * @returns {Circle[]|Polyline[]|Ellipse[]} The list of mixed circles, polygons and ellipses
+     */
     GraphicOverlay.parseSTCS = function(stcs, options) {
         options = options || {};
 
@@ -189,13 +210,19 @@ export let GraphicOverlay = (function() {
         return footprints;
     };
 
-    // ajout d'un tableau d'overlays (= objets Footprint, Circle ou Polyline)
+     /**
+     * Add an array (or single) shapes (i.e. Footprint, Circle, Polyline, Ellipse, Vector, ...)
+     *
+     * @memberof GraphicOverlay
+     * 
+     * @param {Footprint[]|Circle[]|Polyline[]|Ellipse[]|Vector[]} overlaysToAdd - a list (or single) shapes to add to the overlay 
+     */
     GraphicOverlay.prototype.addFootprints = function(overlaysToAdd) {
+        overlaysToAdd = [].concat(overlaysToAdd)
+
     	for (var k=0, len=overlaysToAdd.length; k<len; k++) {
             this.add(overlaysToAdd[k], false);
         }
-
-        //this.view.requestRedraw();
     };
 
     // TODO : item doit pouvoir prendre n'importe quoi en param (footprint, circle, polyline)
@@ -216,7 +243,15 @@ export let GraphicOverlay = (function() {
     };
 
 
-    // return a footprint by index
+    /**
+     * Returns a shape by an index
+     *
+     * @memberof GraphicOverlay
+     * 
+     * @param {number} idx - The index of the shape to retrieve
+     * 
+     * @returns {Footprint|Circle|Polyline|Ellipse|Vector} The shape
+     */
     GraphicOverlay.prototype.getFootprint = function(idx) {
         if (idx<this.footprints.length) {
             return this.footprints[idx];
@@ -227,13 +262,17 @@ export let GraphicOverlay = (function() {
     };
 
     GraphicOverlay.prototype.setView = function(view, idx) {
-        console.trace()
         this.view = view;
 
         this.view.overlays.push(this);
         this.view.insertOverlay(this, idx);
     };
 
+    /**
+     * Clear the overlay of all its shapes
+     *
+     * @memberof GraphicOverlay
+     */
     GraphicOverlay.prototype.removeAll = function() {
         // TODO : RAZ de l'index
         //this.overlays = [];
@@ -281,6 +320,16 @@ export let GraphicOverlay = (function() {
         ctx.restore();
     };
 
+    /**
+     * Increase the brightness of a color by a percentage
+     *
+     * @memberof GraphicOverlay
+     * 
+     * @param {string} hex - The color given in hexadecimal e.g. '#ffa0bb'
+     * @param {number} percent - The percentage to increase the brightness of
+     * 
+     * @returns {string} The new color given as an hexadecimal string
+     */
     GraphicOverlay.increaseBrightness = function(hex, percent){
         // strip the leading # if it's there
         hex = hex.replace(/^\s*#|\s*$/g, '');
@@ -300,16 +349,37 @@ export let GraphicOverlay = (function() {
                 ((0|(1<<8) + b + (256 - b) * percent / 100).toString(16)).substr(1);
     };
 
+    /**
+     * Set the color of the shapes inside the overlay
+     *
+     * @memberof GraphicOverlay
+     * 
+     * @param {string} color - the new color in hexadecimal e.g. '#ff00ff'
+     */
     GraphicOverlay.prototype.setColor = function(color) {
         this.color = color;
         this.reportChange();
     };
 
+    /**
+     * Set the line width of the shapes inside the overlay
+     *
+     * @memberof GraphicOverlay
+     * 
+     * @param {number} lineWidth - the new line width in pixels
+     */
     GraphicOverlay.prototype.setLineWidth = function(lineWidth) {
         this.lineWidth = lineWidth;
         this.reportChange();
     };
 
+    /**
+     * Set the dash line property
+     *
+     * @memberof GraphicOverlay
+     * 
+     * @param {Array.<number>} [lineDash=[]] - See the segments property {@link https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/setLineDash#segments| here}
+     */
     GraphicOverlay.prototype.setLineDash = function(lineDash) {
         this.lineDash = lineDash;
         this.reportChange();

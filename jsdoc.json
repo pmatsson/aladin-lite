@@ -10,13 +10,85 @@
         "allowUnknownTags": true,
         "dictionaries": ["jsdoc","closure"]
     },
+    "docdash": {
+        "typedefs": true,
+        "scripts": [
+            "jsdoc-custom-style.css",
+            "jsdoc-make-responsive.js"
+        ],
+        "sectionOrder": [
+            "Namespaces",
+            "Classes",
+            "Modules",
+            "Externals",
+            "Events",
+            "Mixins",
+            "Interfaces",
+            "Global"
+       ],
+       "openGraph": {
+            "title": "Aladin Lite API documentation",
+            "type": "website",
+            "image": "https://cds-astro.github.io/aladin-lite/aladin-logo.png",
+            "site_name": "Aladin Lite API documentation",
+            "url": "https://cds-astro.github.io/aladin-lite/"
+        },
+        "meta": {
+            "title": "Aladin Lite API documentation",
+            "description": "Aladin Lite API documentation",
+            "keyword": "astronomy"
+        },
+       "search": true,
+       "menu": {                      
+            "Aladin Lite portal": {
+                "href":"https://aladin.cds.unistra.fr/AladinLite",
+                "target":"_blank",
+                "class":"menu-item",
+                "id":"website_link"
+            },
+            "API examples": {
+                "href":"https://aladin.cds.unistra.fr/AladinLite/doc/API/examples",
+                "target":"_blank",
+                "class":"menu-item",
+                "id":"website_link"
+            },
+            "Documentation": {
+                "href":"https://aladin.cds.unistra.fr/AladinLite/doc/",
+                "target":"_blank",
+                "class":"menu-item",
+                "id":"website_link"
+            },
+            "Releases": {
+                "href":"https://aladin.cds.unistra.fr/AladinLite/doc/release",
+                "target":"_blank",
+                "class":"menu-item",
+                "id":"website_link"
+            },
+            "GitHub": {
+                "href":"https://github.com/cds-astro/aladin-lite",
+                "target":"_blank",
+                "class":"menu-item",
+                "id":"website_link"
+            }
+        }
+    },
     "templates": {
         "cleverLinks": true,
-        "monospaceLinks": true
+        "monospaceLinks": true,
+        "default": {
+            "staticFiles": {
+                "include": [
+                  "./jsdoc-custom-style.css",
+                  "./jsdoc-make-responsive.js"
+                ]
+            }
+        }
     },
     "opts": {
         "readme": "./README.md",
         "destination": "./docs/",
-        "tutorials": "./tutorials"
+        "template": "node_modules/docdash",
+        "encoding": "utf8",
+        "verbose": true
     }
 }
