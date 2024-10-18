@@ -84,6 +84,7 @@ use allsky::AllskyRequest;
 use blank::PixelMetadataRequest;
 use moc::MOCRequest;
 use tile::TileRequest;
+use web_sys::RequestCredentials;
 pub enum RequestType {
     Tile(TileRequest),
     Allsky(AllskyRequest),

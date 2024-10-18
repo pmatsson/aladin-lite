@@ -283,6 +283,8 @@ impl App {
             let creator_did = survey.get_config().get_creator_did().to_string();
             let root_url = survey.get_config().get_root_url().to_string();
             let format = survey.get_config().get_format();
+            let request_credentials = survey.get_config().get_request_credentials();
+            let request_mode = survey.get_config().get_request_mode();
 
             if let Some(tiles_iter) = survey.look_for_new_tiles(&mut self.camera, &self.projection)
             {
@@ -292,6 +294,8 @@ impl App {
                         creator_did.clone(),
                         root_url.clone(),
                         format,
+                        request_credentials,
+                        request_mode
                     ));
 
                     // check if we are starting aladin lite or not.
@@ -313,6 +317,8 @@ impl App {
                         creator_did.clone(),
                         root_url.clone(),
                         format,
+                        request_credentials,
+                        request_mode
                     ));
                 }
             }
@@ -720,6 +726,8 @@ impl App {
                                             cfg.get_creator_did().to_string(),
                                             cfg.get_root_url().to_string(),
                                             cfg.get_format(),
+                                            cfg.get_request_credentials(),
+                                            cfg.get_request_mode()
                                         );
                                         self.tile_fetcher.append_base_tile(query);
                                     }

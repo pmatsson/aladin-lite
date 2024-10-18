@@ -229,6 +229,8 @@ impl TileFetcherQueue {
                 let hips_url = cfg.get_root_url().to_string();
                 let hips_fmt = cfg.get_format();
                 let min_order = cfg.get_min_depth_texture();
+                let credentials = cfg.get_request_credentials();
+                let mode = cfg.get_request_mode();
 
                 for tile_cell in crate::healpix::cell::ALLSKY_HPX_CELLS_D0 {
                     if let Ok(query) = self.check_in_file_list(query::Tile::new(
@@ -236,6 +238,8 @@ impl TileFetcherQueue {
                         hips_cdid.clone(),
                         hips_url.clone(),
                         hips_fmt,
+                        credentials,
+                        mode,
                     )) {
                         let dl = downloader.clone();
 

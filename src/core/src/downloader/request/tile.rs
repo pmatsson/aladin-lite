@@ -17,6 +17,8 @@ pub struct TileRequest {
     url: Url,
     format: ImageFormatType,
 
+    credentials: RequestCredentials,
+    mode: RequestMode,
     request: Request<ImageType>,
 }
 
@@ -26,14 +28,21 @@ impl From<TileRequest> for RequestType {
     }
 }
 
-async fn query_html_image(url: &str) -> Result<web_sys::HtmlImageElement, JsValue> {
+async fn query_html_image(url: &str, credentials: RequestCredentials
+) -> Result<web_sys::HtmlImageElement, JsValue> {
     let image = web_sys::HtmlImageElement::new().unwrap_abort();
     let image_cloned = image.clone();
+
+        // Set the CORS and credentials options for the image
+    let cors_value = match credentials {
+        RequestCredentials::Include => Some("use-credentials"),
+        _ => Some("")
+    };
 
     let promise = js_sys::Promise::new(
         &mut (Box::new(move |resolve, reject| {
             // Ask for CORS permissions
-            image_cloned.set_cross_origin(Some(""));
+            image_cloned.set_cross_origin(cors_value);
             image_cloned.set_onload(Some(&resolve));
             image_cloned.set_onerror(Some(&reject));
             image_cloned.set_src(&url);
@@ -49,8 +58,8 @@ use al_core::image::html::HTMLImage;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::JsFuture;
-use web_sys::{RequestInit, RequestMode, Response};
-impl From<query::Tile> for TileRequest {
+use web_sys::{RequestInit, RequestMode, Response, RequestCredentials};
+    impl From<query::Tile> for TileRequest {
     // Create a tile request associated to a HiPS
     fn from(query: query::Tile) -> Self {
         let query::Tile {
@@ -58,14 +67,17 @@ impl From<query::Tile> for TileRequest {
             cell,
             url,
             hips_cdid,
+            credentials,
+            mode,
             id,
         } = query;
 
+        
         let url_clone = url.clone();
         let channel = format.get_channel();
 
         let window = web_sys::window().unwrap_abort();
-        let request = match channel {
+        let request: Request<_> = match channel {
             ChannelType::RGB8U => Request::new(async move {
                 /*let mut opts = RequestInit::new();
                 opts.method("GET");
@@ -95,7 +107,7 @@ impl From<query::Tile> for TileRequest {
                 Ok(ImageType::RawRgb8u { image })
                 */
                 // HTMLImageElement
-                let image = query_html_image(&url_clone).await?;
+                let image = query_html_image(&url_clone, credentials).await?;
                 // The image has been resolved
                 Ok(ImageType::HTMLImageRgb8u {
                     image: HTMLImage::<RGB8U>::new(image),
@@ -130,7 +142,7 @@ impl From<query::Tile> for TileRequest {
                 Ok(ImageType::RawRgba8u { image })
                 */
                 // HTMLImageElement
-                let image = query_html_image(&url_clone).await?;
+                let image = query_html_image(&url_clone, credentials).await?;
                 // The image has been resolved
                 Ok(ImageType::HTMLImageRgba8u {
                     image: HTMLImage::<RGBA8U>::new(image),
@@ -143,7 +155,8 @@ impl From<query::Tile> for TileRequest {
             | ChannelType::R8UI => Request::new(async move {
                 let opts = RequestInit::new();
                 opts.set_method("GET");
-                opts.set_mode(RequestMode::Cors);
+                opts.set_mode(mode);
+                opts.set_credentials(credentials);
 
                 let request =
                     web_sys::Request::new_with_str_and_init(&url_clone, &opts).unwrap_abort();
@@ -173,11 +186,14 @@ impl From<query::Tile> for TileRequest {
             _ => todo!(),
         };
 
+
         Self {
             cell,
             format,
             id,
             hips_cdid,
+            credentials,
+            mode,
             url,
             request,
         }
@@ -193,6 +209,8 @@ pub struct Tile {
     pub format: ImageFormatType,
     hips_cdid: CreatorDid,
     url: Url,
+    credentials: RequestCredentials,
+    mode: RequestMode,
 }
 
 use crate::Abort;
@@ -231,6 +249,8 @@ impl<'a> From<&'a TileRequest> for Option<Tile> {
             hips_cdid,
             url,
             format,
+            credentials,
+            mode,
             ..
         } = request;
         if request.is_resolved() {
@@ -245,6 +265,8 @@ impl<'a> From<&'a TileRequest> for Option<Tile> {
                 hips_cdid: hips_cdid.clone(),
                 url: url.clone(),
                 format: *format,
+                credentials: *credentials,
+                mode: *mode,
             })
         } else {
             None

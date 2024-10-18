@@ -200,6 +200,9 @@ export let HiPS = (function () {
         this.name = (options && options.name) || undefined;
         this.startUrl = options.startUrl;
 
+        this.requestMode = options && options.requestMode;
+        this.requestCredentials = options && options.requestCredentials;
+
         if (location instanceof FileList) {
             let localFiles = {};
             for (var file of location) {
@@ -508,7 +511,7 @@ export let HiPS = (function () {
                 // ID typed url
                 if (self.startUrl && isID) {
                     // First download the properties from the start url
-                    await HiPSProperties.fetchFromUrl(self.startUrl)
+                    await HiPSProperties.fetchFromUrl(self.startUrl, self.requestMode, self.requestCredentials)
                         .then((p) => {
                             self._parseProperties(p);
                         })
@@ -555,7 +558,7 @@ export let HiPS = (function () {
                         throw e;
                     }
                 } else {
-                    await HiPSProperties.fetchFromUrl(self.url)
+                    await HiPSProperties.fetchFromUrl(self.url, self.requestMode, self.requestCredentials)
                         .then((p) => {
                             self._parseProperties(p);
                         })
@@ -889,6 +892,8 @@ export let HiPS = (function () {
                 hipsInitialDec: self.initialDec,
                 isPlanetaryBody: self.isPlanetaryBody(),
                 hipsBody: self.hipsBody,
+                requestCredentials: self.requestCredentials || 'omit',
+                requestMode: self.requestMode || 'cors',
             },
             meta: {
                 ...this.colorCfg.get(),

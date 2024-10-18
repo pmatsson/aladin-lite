@@ -102,6 +102,7 @@ impl Image for EmptyTileImage {
 }
 
 use al_core::image::format::{ChannelType, ImageFormatType, RGB8U, RGBA8U};
+use web_sys::{RequestCredentials, RequestMode};
 
 //use super::TileArrayBuffer;
 
@@ -173,8 +174,12 @@ pub struct HiPSConfig {
     //dataproduct_subtype: Option<Vec<String>>,
     //colored: bool,
     pub creator_did: String,
+
+    pub request_credentials: RequestCredentials,
+    pub request_mode: RequestMode,
 }
 
+use crate::downloader::request;
 use crate::math;
 use crate::HiPSProperties;
 use al_api::coo_system::CooSystem;
@@ -308,6 +313,22 @@ impl HiPSConfig {
         } else {
             0
         };
+
+        let request_credentials = match properties.get_request_credentials() {
+            "include" => RequestCredentials::Include,
+            "same-origin" => RequestCredentials::SameOrigin,
+            "omit" => RequestCredentials::Omit,
+            _ => RequestCredentials::Omit,
+        };
+
+        let request_mode = match properties.get_request_mode() {
+            "cors" => RequestMode::Cors,
+            "no-cors" => RequestMode::NoCors,
+            "same-origin" => RequestMode::SameOrigin,
+            "navigate" => RequestMode::Navigate,
+            _ => RequestMode::Cors,
+        };
+
         let hips_config = HiPSConfig {
             creator_did,
             // HiPS name
@@ -346,6 +367,8 @@ impl HiPSConfig {
             tile_size,
             //dataproduct_subtype,
             //colored,
+            request_credentials,
+            request_mode
         };
 
         Ok(hips_config)
@@ -539,6 +562,17 @@ impl HiPSConfig {
     pub fn get_default_image(&self) -> &EmptyTileImage {
         &self.empty_image
     }
+
+    #[inline(always)]
+    pub fn get_request_credentials(&self) -> RequestCredentials {
+        self.request_credentials
+    }
+
+    #[inline(always)]
+    pub fn get_request_mode(&self) -> RequestMode {
+        self.request_mode
+    }
+
 }
 
 use al_core::shader::{SendUniforms, ShaderBound};

@@ -11,7 +11,7 @@ pub type QueryId = String;
 
 use al_core::image::format::ImageFormatType;
 
-#[derive(Eq, Hash, PartialEq, Clone)]
+#[derive(Eq, PartialEq, Clone)]
 pub struct Tile {
     pub cell: HEALPixCell,
     pub format: ImageFormatType,
@@ -19,17 +19,22 @@ pub struct Tile {
     pub hips_cdid: CreatorDid,
     // The total url of the query
     pub url: Url,
+    pub credentials: RequestCredentials,
+    pub mode: RequestMode,
     pub id: QueryId,
 }
 
 use crate::renderable::CreatorDid;
 use crate::{healpix::cell::HEALPixCell, survey::config::HiPSConfig};
+use web_sys::{RequestCredentials, RequestMode};
 impl Tile {
     pub fn new(
         cell: &HEALPixCell,
         hips_cdid: String,
         hips_url: String,
         format: ImageFormatType,
+        credentials: RequestCredentials,
+        mode: RequestMode
     ) -> Self {
         let ext = format.get_ext_file();
 
@@ -49,6 +54,8 @@ impl Tile {
             url,
             cell: *cell,
             format,
+            credentials,
+            mode,
             id,
         }
     }
