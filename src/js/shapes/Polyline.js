@@ -418,7 +418,7 @@ export let Polyline = (function() {
 
             //ctx.globalAlpha = 1;
             ctx.save();
-            ctx.fillStyle = this.fillColor;
+            ctx.fillStyle = this.fillColor || baseColor;
             ctx.globalAlpha = this.opacity;
             ctx.fill();
             ctx.restore();
