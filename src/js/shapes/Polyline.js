@@ -273,16 +273,12 @@ export let Polyline = (function() {
         }
 
         if (this.isSelected) {
-            if(this.selectionColor) {
-                ctx.strokeStyle = this.selectionColor;
-            } else {
-                ctx.strokeStyle = GraphicOverlay.increaseBrightness(baseColor, 50);
-            }
+            baseColor = this.selectionColor || GraphicOverlay.increaseBrightness(baseColor, 50);
         } else if (this.isHovered) {
-            ctx.strokeStyle = this.hoverColor || GraphicOverlay.increaseBrightness(baseColor, 25);
-        } else {
-            ctx.strokeStyle = baseColor;
+            baseColor = this.hoverColor || GraphicOverlay.increaseBrightness(baseColor, 25);
         }
+
+        ctx.strokeStyle = baseColor;
 
         // 1. project the vertices into the screen
         //    and computes a BBox
@@ -461,6 +457,11 @@ export let Polyline = (function() {
             }
         }
 
+
+        if (this.fill && this.isPointInPolygon(x, y, pointXY)) {
+            return true;
+        }
+
         return false;
     };
 
@@ -511,6 +512,21 @@ export let Polyline = (function() {
         return false;       
     };
 
+    // Function to check if a point is inside a polygon using the ray-casting algorithm
+    Polyline.prototype.isPointInPolygon = function(x, y, vertices) {
+        let inside = false;
+        for (let i = 0, j = vertices.length - 1; i < vertices.length; j = i++) {
+            let xi = vertices[i].x * window.devicePixelRatio, yi = vertices[i].y * window.devicePixelRatio;
+            let xj = vertices[j].x * window.devicePixelRatio, yj = vertices[j].y * window.devicePixelRatio;
+
+            let intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+            if (intersect) inside = !inside;
+        }
+        return inside;
+    }
+
+
+
     // static methods
     // Method for testing whether a line is inside the view
     // http://www.jeffreythompson.org/collision-detection/line-rect.php
@@ -537,6 +553,7 @@ export let Polyline = (function() {
 
         return false;
     };
+
 
     Polyline._intersectLine = function(x1, y1, x2, y2, x3, y3, x4, y4) {
         // Calculate the direction of the lines
