@@ -64,7 +64,7 @@ export let GraphicOverlay = (function() {
 
     	this.lineWidth = options["lineWidth"] || 3;
         this.lineDash = options["lineDash"] || [];
-
+        this.noSmallCheck = options["noSmallCheck"] || false;
     	//this.indexationNorder = 5; // at which level should we index overlays?
     	//this.overlays = [];
     	this.overlayItems = []; // currently Circle or Polyline
@@ -274,7 +274,7 @@ export let GraphicOverlay = (function() {
 
         // 2. Circle and polylines drawing
     	for (var k=0; k<this.overlayItems.length; k++) {
-    	    this.overlayItems[k].draw(ctx, this.view);
+    	    this.overlayItems[k].draw(ctx, this.view, false, this.noSmallCheck);
     	}
 
         ctx.restore();
