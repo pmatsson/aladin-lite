@@ -397,6 +397,8 @@ export let Image = (function () {
                 maxCut = maxCut || imageParams.max_cut;
                 self.setCuts(
                     minCut,
+                    maxCut,
+                    minCut,
                     maxCut
                 );
 

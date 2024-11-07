@@ -424,7 +424,7 @@ export let HiPS = (function () {
             maxCut = self.colorCfg.maxCut || 1.0;
         }
 
-        self.setOptions({minCut, maxCut});
+        self.setOptions({minCut, maxCut, defaultMinCut: minCut, defaultMaxCut: maxCut});
 
         // Coo frame
         if (
@@ -676,11 +676,11 @@ export let HiPS = (function () {
             ) {
                 if (Number.isFinite(self.defaultFitsMinCut) && Number.isFinite(self.defaultFitsMaxCut)) {
                     // reset cuts to those given from the properties
-                    self.setCuts(self.defaultFitsMinCut, self.defaultFitsMaxCut);
+                    self.setCuts(self.defaultFitsMinCut, self.defaultFitsMaxCut, self.defaultFitsMinCut, self.defaultFitsMaxCut);
                 }
                 // Switch from fits to png/webp/jpeg
             } else if (self.imgFormat === "fits") {
-                self.setCuts(0.0, 1.0);
+                self.setCuts(0.0, 1.0, 0.0, 1.0);
             }
 
             // Check if it is a fits
@@ -781,13 +781,32 @@ export let HiPS = (function () {
      * @param {number} minCut - The low cut value to set for the HiPS.
      * @param {number} maxCut - The high cut value to set for the HiPS.
      */
-    HiPS.prototype.setCuts = function (minCut, maxCut) {
-        this.setOptions({minCut, maxCut})
+    HiPS.prototype.setCuts = function (minCut, maxCut, defaultMinCut, defaultMaxCut) {
+        this.setOptions({minCut, maxCut, defaultMinCut, defaultMaxCut})
     };
 
     HiPS.prototype.getCuts = function () {
         return this.colorCfg.getCuts();
     };
+
+
+    /**
+     * Sets the default gamma correction factor for the HiPS.
+     *
+     * This method stores the default gamma value for the HiPS.
+     *
+     * @memberof HiPS
+     *
+     * @param {number} minCut - The low cut value to set for the HiPS.
+     * @param {number} maxCut - The high cut value to set for the HiPS.
+     */
+        HiPS.prototype.setDefaultCuts = function (defaultMinCut, defaultMaxCut) {
+            this.setOptions({defaultMinCut, defaultMaxCut})
+        };
+    
+        HiPS.prototype.getDefaultCuts = function () {
+            return this.colorCfg.getDefaultCuts();
+        };
 
     /**
      * Sets the gamma correction factor for the HiPS.

@@ -106,6 +106,7 @@
             this.setColormap(options.colormap, options)
 
         this.setCuts(options.minCut, options.maxCut)
+        this.setDefaultCuts(options.defaultMinCut, options.defaultMaxCut)
 
         this.setBrightness(options.brightness)
         this.setSaturation(options.saturation)
@@ -267,6 +268,21 @@
 
     ColorCfg.prototype.getCuts = function() {
         return [this.minCut, this.maxCut];
+    };
+
+
+    // @api
+    ColorCfg.prototype.setDefaultCuts = function(minCut, maxCut) {
+        if (minCut === null || minCut === undefined || maxCut === null || maxCut === undefined) {
+            return;
+        }
+
+        this.defaultMinCut = minCut;
+        this.defaultMaxCut = maxCut;
+    };
+
+    ColorCfg.prototype.getDefaultCuts = function() {
+        return [this.defaultMinCut, this.defaultMaxCut];
     };
 
     return ColorCfg;
