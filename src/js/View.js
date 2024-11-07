@@ -611,6 +611,9 @@ export let View = (function () {
             }
 
             view.aladin.contextMenu && view.aladin.contextMenu.show({e});
+
+            var onLongTouchFunc = view.aladin.callbacksByEventName['onLongTouch'];
+            (typeof onLongTouchFunc === 'function') && onLongTouchFunc(e);
         };
         var longTouchTimer;
         var longTouchDuration = 800;

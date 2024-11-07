@@ -1984,7 +1984,8 @@ export let Aladin = (function () {
         "cooFrameChanged",
         "resizeChanged",
         "projectionChanged",
-        "layerChanged"
+        "layerChanged",
+        "onLongTouch"
     ];
 
     /**
