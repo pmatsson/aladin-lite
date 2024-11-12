@@ -800,13 +800,13 @@ export let HiPS = (function () {
      * @param {number} minCut - The low cut value to set for the HiPS.
      * @param {number} maxCut - The high cut value to set for the HiPS.
      */
-        HiPS.prototype.setDefaultCuts = function (defaultMinCut, defaultMaxCut) {
-            this.setOptions({defaultMinCut, defaultMaxCut})
-        };
-    
-        HiPS.prototype.getDefaultCuts = function () {
-            return this.colorCfg.getDefaultCuts();
-        };
+    HiPS.prototype.setDefaultCuts = function (defaultMinCut, defaultMaxCut) {
+        this.setOptions({defaultMinCut, defaultMaxCut})
+    };
+
+    HiPS.prototype.getDefaultCuts = function () {
+        return this.colorCfg.getDefaultCuts();
+    };
 
     /**
      * Sets the gamma correction factor for the HiPS.

@@ -157,8 +157,9 @@ export let Image = (function () {
 
         // @api
         getCuts: HiPS.prototype.getCuts,
-
-            // @api
+        // @api
+        getDefaultCuts: HiPS.prototype.getDefaultCuts,
+        // @api
         setOpacity: HiPS.prototype.setOpacity,
 
 
@@ -172,6 +173,9 @@ export let Image = (function () {
 
         // @api
         setCuts: HiPS.prototype.setCuts,
+        
+        // @api
+        setDefaultCuts: HiPS.prototype.setDefaultCuts,
 
         // @api
         setGamma: HiPS.prototype.setGamma,
