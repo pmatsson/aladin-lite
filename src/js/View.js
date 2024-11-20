@@ -129,7 +129,7 @@ export let View = (function () {
             (dragging) => {
                 var posChangedFn = this.aladin.callbacksByEventName && this.aladin.callbacksByEventName['positionChanged'];
                 if (typeof posChangedFn === 'function') {
-                    var pos = this.aladin.pix2world(this.width / 2, this.height / 2, 'icrs');
+                    var pos = this.aladin.pix2world(this.width / 2, this.height / 2);
                     if (pos !== undefined) {
                         try {
                             posChangedFn({
