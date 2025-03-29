@@ -937,6 +937,12 @@ export let Catalog = (function () {
                     s.x - this.sourceSize / 2,
                     s.y - this.sourceSize / 2
                 );
+            } else if (this.shape instanceof Image) {
+                ctx.drawImage(
+                    this.cacheCanvas,
+                    s.x - this.cacheCanvas.width / 2,
+                    s.y - this.cacheCanvas.height / 2
+                );
             } else if (s.isSelected) {
                 ctx.drawImage(
                     this.cacheSelectCanvas,
